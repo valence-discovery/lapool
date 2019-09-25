@@ -1,0 +1,30 @@
+<svg baseProfile="full" height="300px" version="1.1" width="500px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:rdkit="http://www.rdkit.org/xml" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- END OF HEADER -->
+<rect height="300" style="opacity:1.0;fill:#FFFFFF;stroke:none" width="500" x="0" y="0"> </rect>
+<ellipse cx="68.307" cy="157.988" rx="18.5218" ry="18.5218" style="fill:#F7FBFF;fill-rule:evenodd;stroke:#F7FBFF;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="132.608" cy="131.727" rx="18.5218" ry="18.5218" style="fill:#ECF4FB;fill-rule:evenodd;stroke:#ECF4FB;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="187.501" cy="174.283" rx="18.5218" ry="18.5218" style="fill:#D3E3F3;fill-rule:evenodd;stroke:#D3E3F3;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="306.694" cy="190.577" rx="18.5218" ry="18.5218" style="fill:#ADD0E6;fill-rule:evenodd;stroke:#ADD0E6;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="439.812" cy="173.724" rx="18.5218" ry="18.5218" style="fill:#5EA5D1;fill-rule:evenodd;stroke:#5EA5D1;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="251.801" cy="148.022" rx="18.5218" ry="18.5218" style="fill:#D4E4F3;fill-rule:evenodd;stroke:#D4E4F3;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="413.55" cy="109.423" rx="18.5218" ry="18.5218" style="fill:#4292C6;fill-rule:evenodd;stroke:#4292C6;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="370.995" cy="164.316" rx="18.5218" ry="18.5218" style="fill:#135FA7;fill-rule:evenodd;stroke:#135FA7;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-0" d="M 79.563,160.894 126.604,141.682" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-0" d="M 74.3108,148.034 121.352,128.822" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-1" d="M 139.863,137.352 180.245,168.658" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-2" d="M 196.131,170.758 242.793,151.701" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-3" d="M 299.439,184.952 259.057,153.647" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-4" d="M 315.324,187.053 359.738,168.913" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-5" d="M 428.555,172.185 382.252,165.855" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-6" d="M 437.514,168.099 415.848,115.048" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-7" d="M 409.19,115.048 375.356,158.691" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="59.677" y="163.613"><tspan>C0</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="123.978" y="137.352"><tspan>C1</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="178.871" y="179.908"><tspan>C2</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="298.064" y="196.202"><tspan>C3</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="428.555" y="179.349"><tspan>*C4</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="242.793" y="153.647"><tspan>O5</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="401.916" y="115.048"><tspan>*O6</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="359.738" y="169.941"><tspan>*C7</tspan></text>
+<text style="font-size:12px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="202.151" y="288"><tspan>score = 1.0000</tspan></text>
+</svg>

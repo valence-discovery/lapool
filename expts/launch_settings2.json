@@ -1,0 +1,27 @@
+{
+    "GitRepository": "bitbucket.org/invivoai/molg.git",
+    "GitBranch": "master",
+    "GitInnerPath": "",
+    "InstanceCount": 24,
+    "MaxRuntime": 360,
+    "SpotPrice": "On-Demand",
+    "LaunchSpecification":  {
+                                "ImageId": "ami-0a83ff5f568bce883",
+                                "KeyName": "manu",
+                                "SecurityGroupIds": ["sg-c576d9af"],
+                                "InstanceType": "c5.xlarge",
+                                "Placement": {
+                                "AvailabilityZone": "us-east-2a"
+                                },
+                                "BlockDeviceMappings": [
+                                    {
+                                        "DeviceName": "/dev/sdb",
+                                        "Ebs": {
+                                            "DeleteOnTermination": true,
+                                            "VolumeSize": 25
+                                        }
+                                    }
+                                ]
+                            }
+}
+

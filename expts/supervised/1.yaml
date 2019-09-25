@@ -1,0 +1,103 @@
+filetype: csv
+
+gcn:
+  pool_loss: False
+  b_norm: True
+
+topk_1:
+  pool_arch:
+    arch: topk
+    hidden_dim: 0.1
+  pool_loss: False
+
+topk_2:
+  pool_arch:
+    arch: topk
+    hidden_dim: 0.25
+  pool_loss: False
+
+topk_3:
+  pool_arch:
+    arch: topk
+    hidden_dim: 0.35
+  pool_loss: False
+
+diffpool_1:
+  pool_arch:
+    arch: diff
+    hidden_dim: 0.1
+  pool_loss: True
+
+diffpool_2:
+  pool_arch:
+    arch: diff
+    hidden_dim: 0.25
+  pool_loss: True
+
+diffpool_3:
+  pool_arch:
+    arch: diff
+    hidden_dim: 0.35
+  pool_loss: True
+
+lapool_0:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.
+    cluster_dim: 128
+  pool_loss: True
+  b_norm: True
+
+lapool_0.3:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.3
+    cluster_dim: 128
+  pool_loss: False
+  b_norm: True
+
+lapool_0.5:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.5
+    cluster_dim: 128
+  pool_loss: False
+  b_norm: True
+
+lapool_0.7:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.7
+    cluster_dim: 128
+  pool_loss: False
+  b_norm: True
+
+lapool_0.6:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.6
+    cluster_dim: 64
+  pool_loss: False
+
+lapool_0.8:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.8
+    cluster_dim: 72
+  pool_loss: False
+  b_norm: True
+
+lapool_0.9:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.9
+    cluster_dim: 72
+  pool_loss: False
+
+lapool_0.95:
+  pool_arch:
+    arch: laplacian
+    sigma: 0.95
+    cluster_dim: 72
+  pool_loss: False
+

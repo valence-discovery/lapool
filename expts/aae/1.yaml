@@ -1,0 +1,49 @@
+encoder: 
+    gather_dim: 128
+    conv_dims:
+      - 32
+      - 32
+    conv_dims_after:
+      - 128
+    linear_dim:
+      - 128
+      - 256
+    dropout: 0.1
+    activation: 'relu'
+    pool_arch: 
+      arch: "laplacian"
+      attn: 1
+      lap_hop: 3
+      hop: 3
+      concat: False
+      reg_mode: 0
+      dropk: 0.75
+
+
+critic: 
+    layers_dim:
+      - 128
+      - 64
+    dropout: 0.1
+    activation: 'relu'
+
+decoder:
+  layers_dim:
+    - 256
+    - 512
+  nodes_dim:
+    - 256
+    - 128
+  graph_dim:
+    - 256
+    - 256
+  dropout: 0.1
+  activation: 'relu'
+
+discriminator:
+  layers_dim:
+    - 128
+    - 64
+    - 32
+  dropout: 0.1
+  activation: 'relu'

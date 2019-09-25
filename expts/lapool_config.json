@@ -1,0 +1,1 @@
+{"supervised":true, "graph_type": "dense", "config":1, "repeats":3, "data_path":["ENZYMES", "FRANKENSTEIN", "PROTEINS", "DD"], "epochs":1000, "name":["gcn_laplacian_0.3", "gcn_laplacian_0.5"], "reg_mode":[0,1,2], "hop": [-1, 3], "lap_hop":[1, 3]}

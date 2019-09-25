@@ -1,0 +1,37 @@
+<svg baseProfile="full" height="300px" version="1.1" width="500px" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:rdkit="http://www.rdkit.org/xml" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- END OF HEADER -->
+<rect height="300" style="opacity:1.0;fill:#FFFFFF;stroke:none" width="500" x="0" y="0"> </rect>
+<ellipse cx="256.172" cy="82.715" rx="22.1488" ry="22.1488" style="fill:#F6FAFE;fill-rule:evenodd;stroke:#F6FAFE;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="72.3457" cy="215.757" rx="22.1488" ry="22.1488" style="fill:#F3F8FD;fill-rule:evenodd;stroke:#F3F8FD;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="338.791" cy="74.1848" rx="22.1488" ry="22.1488" style="fill:#F7FBFF;fill-rule:evenodd;stroke:#F7FBFF;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="270.947" cy="225.815" rx="22.1488" ry="22.1488" style="fill:#E6F0F9;fill-rule:evenodd;stroke:#E6F0F9;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="63.8155" cy="133.138" rx="22.1488" ry="22.1488" style="fill:#D3E3F3;fill-rule:evenodd;stroke:#D3E3F3;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="436.184" cy="208.755" rx="22.1488" ry="22.1488" style="fill:#B9D5EA;fill-rule:evenodd;stroke:#B9D5EA;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="222.25" cy="158.53" rx="22.1488" ry="22.1488" style="fill:#9AC7E0;fill-rule:evenodd;stroke:#9AC7E0;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="139.631" cy="167.06" rx="22.1488" ry="22.1488" style="fill:#5DA4D0;fill-rule:evenodd;stroke:#5DA4D0;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="387.488" cy="141.47" rx="22.1488" ry="22.1488" style="fill:#3989C1;fill-rule:evenodd;stroke:#3989C1;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<ellipse cx="353.566" cy="217.285" rx="22.1488" ry="22.1488" style="fill:#3888C0;fill-rule:evenodd;stroke:#3888C0;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-0" d="M 264.802,81.8239 330.161,75.0758" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-9" d="M 253.655,88.34 224.767,152.905" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-7" d="M 80.1178,210.132 131.859,172.685" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-8" d="M 71.7649,210.132 64.3963,138.763" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-1" d="M 342.862,79.8098 383.417,135.845" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-4" d="M 279.576,224.924 342.309,218.447" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-5" d="M 266.876,220.19 226.321,164.155" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-10" d="M 75.4504,138.344 128.374,162.024" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-2" d="M 432.113,203.13 391.559,147.095" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-3" d="M 424.55,209.956 364.822,216.123" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-6" d="M 213.62,159.421 150.887,165.898" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<path class="bond-11" d="M 384.971,147.095 356.082,211.66" style="fill:none;fill-rule:evenodd;stroke:#000000;stroke-width:2px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"/>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="247.542" y="88.34"><tspan>C0</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="61.0889" y="221.382"><tspan>*C1</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="330.161" y="79.8098"><tspan>C2</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="262.317" y="231.44"><tspan>C3</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="52.1806" y="138.763"><tspan>*O4</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="424.55" y="214.38"><tspan>*O5</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="213.62" y="164.155"><tspan>C6</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="128.374" y="172.685"><tspan>*C7</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="376.231" y="147.095"><tspan>*C8</tspan></text>
+<text style="font-size:11px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="342.309" y="222.91"><tspan>*C9</tspan></text>
+<text style="font-size:12px;font-style:normal;font-weight:normal;fill-opacity:1;stroke:none;font-family:sans-serif;text-anchor:start;fill:#000000" x="202.151" y="288"><tspan>score = 0.8972</tspan></text>
+</svg>

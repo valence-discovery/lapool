@@ -1,0 +1,8 @@
+{
+  "task": "tox21",
+  "arch": "lap",
+  "max_size": 80,
+  "min_size": 5,
+  "ksize": 0.125,
+  "pool_params": {}
+}

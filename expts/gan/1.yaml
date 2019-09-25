@@ -1,0 +1,31 @@
+discriminator: 
+    gather_dim: 128
+    conv_dims:
+      - 32
+      - 64
+    linear_dims:
+      - 128
+      - 64
+    dropout: 0.1
+    pool_arch: 
+      arch: "laplacian"
+
+critic: 
+    gather_dim: 128
+    conv_dims:
+      - 32
+      - 64
+    linear_dims:
+      - 128
+      - 64
+    dropout: 0.1
+    pool_arch: 
+      arch: "laplacian"
+
+generator:
+  layers_dim:
+    - 128
+    - 256
+    - 512
+  dropout: 0.25
+  activation: 'relu'

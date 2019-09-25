@@ -1,0 +1,1 @@
+{"supervised":true, "graph_type": "dense", "config":1,  "repeats":5, "data_path":["ENZYMES", "FRANKENSTEIN", "PROTEINS", "DD"], "epochs":500, "name":"gcn"}
