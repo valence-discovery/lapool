@@ -1,11 +1,17 @@
 # Directory contents
 
-supervised.py - main run script for supervised experiments
+supervised.py - main run script for supervised experiments 
+
 default_config.yml - default architecture configuration
+
 bin/ - executables for running experiments
+
 data/  - Source datasets
+
 expts/ - configuration files
+
 gnnpooling/ - main source code with pooling and gnn modules
+
 results/ - experiment results
 
 
