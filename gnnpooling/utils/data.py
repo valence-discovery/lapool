@@ -16,7 +16,7 @@ from torch.utils.data.dataset import Dataset
 from gnnpooling.utils import const
 from gnnpooling.utils.tensor_utils import to_tensor, is_tensor, one_of_k_encoding, is_numpy
 from gnnpooling.utils.graph_utils import pad_graph, pad_feats
-from gnnpooling.utils.transformers import GraphTransformer, FingerprintsTransformer, to_mol, smiles_to_mols
+from gnnpooling.utils.transformers import GraphTransformer, to_mol, smiles_to_mols
 
 # from skmultilearn.model_selection import iterative_train_test_split, IterativeStratification
 MAX_N = None
