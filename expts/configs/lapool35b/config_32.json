@@ -1,1 +1,0 @@
-{"config": [1], "data_path": ["DD"], "epochs": [1000], "graph_type": ["dense"], "hop": [3], "lap_hop": [1], "name": ["gcn_laplacian_0.5"], "reg_mode": [2], "repeats": [3], "supervised": [true]}

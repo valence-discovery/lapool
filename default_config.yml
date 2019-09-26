@@ -1,0 +1,35 @@
+conv_before1:
+  hidden_size:
+    - 128
+  b_norm: False
+  residual: False
+  bias: True
+
+conv_before2:
+  hidden_size:
+    - 128
+  b_norm: False
+  residual: False
+  bias: True
+
+hpool:
+  arch: ~
+
+conv_after1:
+  hidden_size:
+    - 64
+    - 64
+  residual: True
+  b_norm: False
+  bias: True
+
+gpool:
+  arch: 'gated' # will keep the same output dim
+
+fclayers:
+  - out_size: 128
+    activation: 'relu'
+    b_norm: True
+    bias: True
+
+

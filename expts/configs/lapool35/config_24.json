@@ -1,1 +1,0 @@
-{"supervised": [true], "graph_type": ["dense"], "config": [1], "repeats": [3], "data_path": ["FRANKENSTEIN"], "epochs": [1000], "name": ["gcn_laplacian_0.3"], "reg_mode": [0], "hop": [-1], "lap_hop": [1]}

@@ -1,1 +1,0 @@
-{"supervised": [true], "graph_type": ["dense"], "config": [1], "repeats": [5], "max_num_nodes": [100], "min_num_nodes": [10], "data_path": ["ENZYMES"], "epochs": [1000], "name": ["gcn_laplacian_0.3"], "reg_mode": [1], "hop": [0], "lap_hop": [3]}

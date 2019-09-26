@@ -55,8 +55,8 @@ def to_mol(mol, addHs=False, explicitOnly=True, ordered=True, kekulize=True):
         mol = Chem.AddHs(mol, explicitOnly=explicitOnly)
     if mol and ordered:
         new_order = Chem.rdmolfiles.CanonicalRankAtoms(mol, breakTies=True)
-        new_order = sorted([(y,x) for x,y in enumerate(new_order)])
-        mol = RenumberAtoms(mol,[y for (x,y) in new_order]) 
+        new_order = sorted([(y, x) for x, y in enumerate(new_order)])
+        mol = RenumberAtoms(mol, [y for (x, y) in new_order])
     if kekulize:
         Chem.Kekulize(mol, clearAromaticFlags=False)
     return mol
@@ -282,152 +282,6 @@ class MoleculeTransformer(TransformerMixin):
         return list(filter(None.__ne__, feats)), ids
 
 
-class FingerprintsTransformer(MoleculeTransformer):
-    r"""
-    Fingerprint molecule transformer.
-    This transformer is able to compute various fingerprints regularly used in QSAR modeling.
-
-    Arguments
-    ----------
-        kind: str, optional
-            Name of the fingerprinting method used. Should be one of
-            {'global_properties', 'atom_pair', 'topological_torsion',
-            'morgan_circular', 'estate', 'avalon_bit', 'avalon_count', 'erg',
-            'rdkit', 'maccs'}
-            (Default value = 'morgan_circular')
-        length: int, optional
-            Length of the fingerprint to use
-            (Default value = 2000)
-
-    Attributes
-    ----------
-        kind: str
-            Name of the fingerprinting technique used
-        length: int
-            Length of the fingerprint to use
-        fpfun: function
-            function to call to compute the fingerprint
-    """
-    MAPPING = OrderedDict(
-        global_properties=lambda x, params: augmented_mol_properties(x),
-        # physiochemical=lambda x: GetBPFingerprint(x),
-        atom_pair=lambda x, params: GetHashedAtomPairFingerprintAsBitVect(
-            x, **params),
-        topological_torsion=lambda x, params: GetHashedTopologicalTorsionFingerprintAsBitVect(
-            x, **params),
-        morgan_circular=lambda x, params: GetMorganFingerprintAsBitVect(
-            x, 2, **params),
-        estate=lambda x, params: FingerprintMol(x)[0],
-        avalon_bit=lambda x, params: GetAvalonFP(x, **params),
-        avalon_count=lambda x, params: GetAvalonCountFP(x, **params),
-        erg=lambda x, params: GetErGFingerprint(x),
-        rdkit=lambda x, params: RDKFingerprint(x, **params),
-        maccs=lambda x, params: GetMACCSKeysFingerprint(x)
-    )
-
-    def __init__(self, kind='morgan_circular', length=2000):
-        super(FingerprintsTransformer, self).__init__()
-        if not (isinstance(kind, str) and (kind in FingerprintsTransformer.MAPPING.keys())):
-            raise ValueError("Argument kind must be in: " +
-                             ', '.join(FingerprintsTransformer.MAPPING.keys()))
-        self.kind = kind
-        self.length = length
-        self.fpfun = self.MAPPING.get(kind, None)
-        if not self.fpfun:
-            raise ValueError("Fingerprint {} is not offered".format(kind))
-        self._params = {}
-        self._params.update(
-            {('fpSize' if kind == 'rdkit' else 'nBits'): length})
-
-    def _transform(self, mol):
-        r"""
-        Transforms a molecule into a fingerprint vector
-        :raises ValueError: when the input molecule is None
-
-        Arguments
-        ----------
-            mol: rdkit.Chem.Mol
-                Molecule of interest
-
-        Returns
-        -------
-            fp: np.ndarray
-                The computed fingerprint
-
-        """
-
-        if mol is None:
-            raise ValueError("Expecting a Chem.Mol object, got None")
-        # expect cryptic rdkit errors here if this fails, #rdkitdev
-        fp = self.fpfun(mol, self._params)
-        if isinstance(fp, ExplicitBitVect):
-            fp = explicit_bit_vect_to_array(fp)
-        else:
-            fp = list(fp)
-        return fp
-
-    def transform(self, mols, **kwargs):
-        r"""
-        Transforms a batch of molecules into fingerprint vectors.
-
-        .. note::
-            The recommended way is to use the object as a callable.
-
-        Arguments
-        ----------
-            mols: (str or rdkit.Chem.Mol) iterable
-                List of SMILES or molecules
-            kwargs: named parameters for transform (see below)
-
-        Returns
-        -------
-            fp: array
-                computed fingerprints of size NxD, where D is the
-                requested length of features and N is the number of input
-                molecules that have been successfully featurized.
-
-        """
-        return super(FingerprintsTransformer, self).transform(mols, **kwargs)
-
-    def __call__(self, mols, dtype=torch.long, cuda=False, **kwargs):
-        r"""
-        Transforms a batch of molecules into fingerprint vectors,
-        and return the transformation in the desired data type format as well as
-        the set of valid indexes.
-
-        Arguments
-        ----------
-            mols: (str or rdkit.Chem.Mol) iterable
-                The list of input smiles or molecules
-            dtype: torch.dtype or numpy.dtype, optional
-                Datatype of the transformed variable.
-                Expect a tensor if you provide a torch dtype, a numpy array if you provide a
-                numpy dtype (supports valid strings) or a vanilla int/float. Any other option will
-                return the output of the transform function.
-                (Default value = torch.long)
-            cuda: bool, optional
-                Whether to transfer tensor on the GPU (if output is a tensor)
-            kwargs: named parameters for transform (see below)
-
-        Returns
-        -------
-            fp: array
-                computed fingerprints (in `dtype` datatype) of size NxD,
-                where D is the requested length of features and N is the number
-                of input molecules that have been successfully featurized.
-            ids: array
-                all valid molecule positions that did not failed during featurization
-
-        """
-        fp, ids = super(FingerprintsTransformer, self).__call__(mols, **kwargs)
-        if is_numpy(dtype):
-            fp = np.array(fp, dtype=dtype)
-        elif is_tensor(dtype):
-            fp = to_tensor(fp, gpu=cuda, dtype=dtype)
-        else:
-            raise(TypeError('The type {} is not supported'.format(dtype)))
-        return fp, ids
-
 class GraphTransformer(MoleculeTransformer):
     def __init__(self, mol_size=[0, 100], explicit_H=False, all_feat=True, add_bond=False):
         # if this is not set, packing of graph would be expected later
@@ -468,7 +322,6 @@ class GraphTransformer(MoleculeTransformer):
             if self.use_chirality:
                 self.n_atom_feat += 3
 
-
     def transform(self, mols, ignore_errors=False):
         features = []
         mol_list = []
@@ -487,7 +340,8 @@ class GraphTransformer(MoleculeTransformer):
                     'Molecule {} cannot be transformed adjency graph'.format(ml)))
             if mol:
                 num_atom = mol.GetNumAtoms()
-                if (self.mol_size[0] and self.mol_size[0] > num_atom) or (self.mol_size[1] and num_atom > self.mol_size[1]):
+                if (self.mol_size[0] and self.mol_size[0] > num_atom) or (
+                        self.mol_size[1] and num_atom > self.mol_size[1]):
                     mol = None
             mol_list.append(mol)
 

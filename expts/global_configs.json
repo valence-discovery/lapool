@@ -1,1 +1,0 @@
-[{"decoder":["gru", "mlp"], "all_feat": [1], "epochs": [1000], "pre_epochs":[750], "id": [1, 2], "batch":[32], "latent_dim": [128, 256], "max_size": [40], "min_size": [5], "with_bond":[1], "data_path":["../data/moses/dataset_v1.csv"], "n_mols":[500000], "max_n":[-1]}]

@@ -1,1 +1,0 @@
-{"supervised": [true], "graph_type": ["dense"], "config": [1], "repeats": [3], "data_path": ["PROTEINS"], "epochs": [1000], "name": ["gcn_laplacian_0.5"], "reg_mode": [1], "hop": [3], "lap_hop": [1]}

@@ -1,1 +1,0 @@
-{"supervised": [true], "graph_type": ["dense"], "config": [1], "repeats": [5], "data_path": ["ENZYMES"], "epochs": [500], "name": ["gcn"]}
