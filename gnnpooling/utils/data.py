@@ -19,8 +19,6 @@ from gnnpooling.utils.graph_utils import pad_graph, pad_feats
 from gnnpooling.utils.transformers import GraphTransformer, FingerprintsTransformer, to_mol, smiles_to_mols
 
 # from skmultilearn.model_selection import iterative_train_test_split, IterativeStratification
-
-# import invivobase modules
 MAX_N = None
 
 BENCHMARKS = {"ENZYMES", "DD", "FRANKENSTEIN", "PROTEINS"}
