@@ -6,15 +6,16 @@ import torch.nn.functional as F
 from gnnpooling.utils import const
 from rdkit import Chem
 from rdkit.Chem import rdDepictor
+from rdkit.Chem import rdmolops
 from rdkit.Chem.Draw import rdMolDraw2D
 from torchvision.utils import make_grid
 from torchvision import transforms
 from gnnpooling.utils.tensor_utils import to_sparse
 from PIL import Image
 import io
+import dgl
 
 
-ATOM_DECODER = np.asarray(const.ATOM_LIST + ["*"])
 TRANSFORMER = transforms.ToTensor()
 EDGE_DECODER = const.BOND_TYPES
 
@@ -159,31 +160,35 @@ def adj2nx(adj):
 
 
 def decode_one_hot(encoding, fail=-1):
+    if isinstance(encoding, np.integer):
+        return encoding
     if sum(encoding) == 0:
+        print("WTFFF")
         return fail
     return np.argmax(encoding)
 
 
-def data2mol(data):
-    adj, x, *x_add = data
+def data2mol(data, atom_decoder):
+    adj, x, *_ = data
     adj = restack(adj)
     x = restack(x)
     mols = []
     n_mols = adj.shape[0]
     for i in range(n_mols):
-        mols.append(adj2mol(adj[i].cpu().detach().long().numpy(), x[i].cpu().detach().long().numpy()))
+        mols.append(adj2mol(adj[i].cpu().detach().numpy(), x[i].cpu().detach().numpy(), atom_decoder))
     return mols
 
+def get_largest_fragment(mol):
+    return max(rdmolops.GetMolFrags(mol, asMols=True), default=mol, key=lambda m: m.GetNumAtoms())
 
-def adj2mol(adj_mat, atom_one_hot, atom_decoder=ATOM_DECODER, edge_decoder=EDGE_DECODER):
+
+def adj2mol(adj_mat, atom_one_hot, atom_decoder, edge_decoder=EDGE_DECODER):
     mol = Chem.RWMol()
-    atoms = [ATOM_DECODER[decode_one_hot(atom)] for atom in atom_one_hot]
+    atoms = [atom_decoder[decode_one_hot(atom)] for atom in atom_one_hot]
     n_atoms = adj_mat.shape[0]
     # contains edges, so get argmax on the edge
     edge_type = np.argmax(adj_mat, axis=-1)
-    adj_mat = np.sum(adj_mat, axis=-1)
-    edges = np.triu(adj_mat, 1).nonzero()
-    # print(atoms)
+    edges = np.triu(edge_type!=len(EDGE_DECODER), 1).nonzero() 
     accepted_atoms = {}
     for i, atom in enumerate(atoms):
         a = None
@@ -195,12 +200,13 @@ def adj2mol(adj_mat, atom_one_hot, atom_decoder=ATOM_DECODER, edge_decoder=EDGE_
         start = accepted_atoms.get(start)
         end = accepted_atoms.get(end)
         if (start is not None and end is not None):
-            btype = EDGE_DECODER[edge_type[start, end]]
-            mol.AddBond(int(start), int(end), btype)
+            btype = edge_type[start, end]
+            if btype < len(EDGE_DECODER):
+                mol.AddBond(int(start), int(end), EDGE_DECODER[btype])
     try:
         Chem.SanitizeMol(mol)
     except Exception as e:
-        print(e)
+        pass
 
     mol = mol.GetMol()
     try:
@@ -216,7 +222,11 @@ def adj2mol(adj_mat, atom_one_hot, atom_decoder=ATOM_DECODER, edge_decoder=EDGE_
 def convert_mol_to_smiles(mollist):
     smiles = []
     for mol in mollist:
-        smiles.append(Chem.MolToSmiles(mol))
+        if mol:
+            _ =[x.ClearProp('molAtomMapNumber') for x in mol.GetAtoms()]
+            smiles.append(Chem.MolToSmiles(mol))
+        else:
+            smiles.append(None)
     return smiles
 
 
@@ -245,7 +255,7 @@ def convert_to_grid(mols, molSize=(350, 200)):
     return None
 
 
-def sample_sigmoid(logits, temperature=1, sample=True, thresh=0.5, gumbel=True, hard=False):
+def sample_sigmoid(logits, temperature=1, sample=False, thresh=0.5, gumbel=True, hard=False):
     y_thresh = torch.ones_like(logits) * thresh
     if gumbel:
         y = gumbel_sigmoid(logits, temperature)
@@ -433,3 +443,51 @@ def pack_graph(batch_G, batch_x, return_sparse=False, fill_missing=0):
     if return_sparse and fill_missing == 0:
         out_G = to_sparse(out_G)
     return out_G, out_x  # .requires_grad_()
+
+
+def batch_triu_to_full(adj, gsize, nedges=1):
+    """Recover full matrix from upper triangular
+    B, N*(N-1)/2, E == > B, N, N, E"""
+    b_size = adj.shape[0]
+    ind = np.ravel_multi_index(np.triu_indices(gsize, 1), (gsize, gsize))
+    upper_tree = torch.zeros(gsize ** 2).index_fill(0, torch.from_numpy(ind), 1).contiguous().unsqueeze(-1).expand(gsize ** 2, nedges).byte()
+    upper_tree = upper_tree.to(adj.device)
+    adj_logits = adj.new_zeros(b_size, gsize ** 2, nedges)
+    adj_logits = adj_logits.masked_scatter(upper_tree, adj).view(b_size, gsize, gsize, nedges)
+    adj_logits = adj_logits + adj_logits.transpose(1, 2)
+    return adj_logits
+
+
+
+def batch_full_to_triu(adj, gsize):
+    """Return upper triangular of a square matrix:
+    B, N, N, E ==> B, N*(N-1)/2, E"""
+    one_edges = torch.ones_like(adj)
+    edges_mask = one_edges.permute(0, -1, 1, 2).triu(1) != 0 
+    return adj.permute(0, -1, 1, 2).masked_select(edges_mask).contiguous().view(adj.shape[0], adj.shape[-1], -1).permute(0, -1, 1)
+
+
+def adj_mat_from_edges(edges):
+    adj = (edges.view(edges.shape[0], -1, edges.shape[-1]).argmax(dim=-1) != (edges.shape[-1] - 1)).long()
+    return adj.view(edges.shape[0], edges.shape[1], edges.shape[2]).float()
+
+
+def dgl_from_edge_matrix(G, X, mask=None, full_mat=False):
+    g_collections = []
+    adj_mat = adj_mat_from_edges(G)
+    for i, (g_i, e_i, x_i) in enumerate(zip(adj_mat, G, X)):
+        g = dgl.DGLGraph()
+        dt = {'h':x_i}
+        if mask is not None:
+            dt.update(mask=mask[i])
+        g.add_nodes(g_i.shape[-1], dt)
+        adj_i = torch.ones_like(g_i)
+        edge_i = e_i.view(-1, e_i.shape[-1])
+        if not full_mat:
+            adj_i = g_i
+            edge_i = e_i.masked_select((adj_i > 0).unsqueeze(-1)).view(-1, e_i.shape[-1])                
+        g.add_edges(*zip(*adj_i.nonzero()))
+        g.edata['he'] = edge_i
+        g_collections.append(g)
+    return g_collections
+    

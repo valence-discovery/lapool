@@ -4,7 +4,7 @@ from .clusterpool import ClusterPool
 from .batchlapool import LaPool
 
 from functools import partial
-from gnnpooling.models.layers import FCLayer, GlobalSoftAttention, GlobalSumPool1d, GlobalGatedPool, GlobalGatedPool, DeepSetEncoder, GlobalAvgPool1d
+from gnnpooling.models.layers import FCLayer, GlobalSoftAttention, GlobalMaxPool1d, GlobalSumPool1d, GlobalGatedPool, DeepSetEncoder, GlobalAvgPool1d
 
 def get_hpool(**params):
     arch = params.pop("arch", None)
@@ -31,4 +31,6 @@ def get_gpool(input_dim=None, **params):
         return GlobalSoftAttention(input_dim, input_dim, **params)
     elif arch == 'avg':
         return GlobalAvgPool1d()
+    elif arch == 'max':
+        return GlobalMaxPool1d()
     return GlobalSumPool1d()

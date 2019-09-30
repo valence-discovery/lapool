@@ -1,12 +1,16 @@
 import networkx as nx
 import numpy as np
 import torch
+import dgl
+from rdkit import Chem
 from functools import partial
 from torch.utils.data import DataLoader
 from torch.utils.data.dataset import Dataset
 from gnnpooling.utils.tensor_utils import to_tensor, is_tensor, one_of_k_encoding, is_numpy
 from gnnpooling.utils.graph_utils import pad_graph, pad_feats
-
+from gnnpooling.utils.transformers import to_mol
+import networkx as nx
+import matplotlib.pyplot as plt
 
 class MolDataset(Dataset):
     def __init__(self, X, y, mols, w=None, cuda=False, pad_to=-1, **kwargs):
@@ -120,3 +124,40 @@ class NetworkXGraphDataset(Dataset):
             return (adj, feat, mask), None, target, w
         else:
             return (adj, feat, mask), None, target
+
+
+
+class GenMolDataset(Dataset):
+    def __init__(self, smiles, transformer, cuda=False, pad_to=-1, **kwargs):
+        self.cuda = cuda
+        self.smiles = smiles
+        self.transformer = transformer
+        if pad_to is None:
+            pad_to = -1
+        self.pad_to = pad_to
+
+    def __len__(self):
+        return len(self.smiles)
+
+    def __getitem__(self, idx):
+        mol_i = to_mol(self.smiles[idx]) 
+        graph = self.transformer.transform([self.smiles[idx]])
+        g_i, f_i = graph[0][0], graph[0][1]        
+        fake_atoms = torch.zeros(f_i.shape[-1])
+        fake_atoms[-1] = 1
+        true_nodes = g_i.shape[0]
+        if not isinstance(g_i, torch.Tensor):
+            g_i = pad_graph(to_tensor(g_i, gpu=self.cuda, dtype=torch.float32), max_num_node=self.pad_to).squeeze()
+        
+        if not isinstance(f_i, torch.Tensor):
+            f_i = pad_feats(to_tensor(f_i, gpu=self.cuda, dtype=torch.float32), no_atom_tensor=fake_atoms, max_num_node=self.pad_to)
+     
+        # add mask for binary
+        m_i = torch.zeros(g_i.shape[0])
+        m_i[torch.arange(true_nodes)] = 1
+        m_i = m_i.unsqueeze(-1)
+        if g_i.dim() == 2:
+            g_i = g_i.unsqueeze(-1)
+
+        return (g_i, f_i, m_i), mol_i, torch.ones(1) # 
+        

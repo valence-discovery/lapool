@@ -1,8 +1,3 @@
-from deepchem.data.datasets import NumpyDataset
-from deepchem.data import CSVLoader
-from deepchem.feat import RawFeaturizer
-from deepchem.splits import ButinaSplitter, IndexSplitter, RandomSplitter, RandomStratifiedSplitter, ScaffoldSplitter
-from deepchem.trans import BalancingTransformer
 import logging
 import networkx as nx
 import numpy as np
@@ -10,10 +5,16 @@ import os
 import pandas as pd
 import re
 
+from deepchem.data.datasets import NumpyDataset
+from deepchem.data import CSVLoader
+from deepchem.feat import RawFeaturizer
+from deepchem.splits import ButinaSplitter, IndexSplitter, RandomSplitter, RandomStratifiedSplitter, ScaffoldSplitter
+from deepchem.trans import BalancingTransformer
 from functools import partial
 from sklearn.model_selection import train_test_split
 from gnnpooling.utils.transformers import GraphTransformer, to_mol, smiles_to_mols
-from gnnpooling.utils.datasets import NetworkXGraphDataset, MolDataset
+from gnnpooling.utils.datasets import NetworkXGraphDataset, MolDataset, GenMolDataset
+from gnnpooling.utils import const
 
 logging.getLogger("deepchem").setLevel(logging.ERROR)
 
@@ -245,59 +246,27 @@ def load_supervised_dataset(dataset, min_size=0, max_size=None, test_size=0.1, v
         return _load_dense_dataset(dataset, test_size=test_size, valid_size=valid_size, min_size=min_size, max_size=max_size)
 
 
-def read_gen_data(valid_size=0.2, max_n=-1, **kwargs):
-    model_data_dir = os.path.join(DATA_DIR, 'QM9')
-    train_file = "train.pkl"
-    valid_file = "valid.pkl"
-    test_file =  "test.pkl"
-    if "qm9" in file_name:
-        data = pd.read_csv(file_name)
-        if max_n >0 :
-            data = data[:max_n]
-        x_train = data.values[:, 0]
-        x_train, x_valid = train_test_split(x_train, test_size=valid_size, shuffle=True)
-        x_train, x_test = train_test_split(x_train, test_size=valid_size, shuffle=True)
-        transform_fn = partial(transform_data, **kwargs)
-        dtrain = transform_fn(x_train, np.ones_like(x_train)[:,np.newaxis])
-        dvalid = transform_fn(x_valid, np.ones_like(x_valid)[:,np.newaxis])        
-        dtest= transform_fn(x_test, np.ones_like(x_test)[:,np.newaxis])
-        x_train, y_train, mol_train = dtrain
-        #save_pkl(*dtrain, os.path.join(output_path,"train.pkl"))
-        x_valid, y_valid, mol_valid = dvalid
-        #save_pkl(*dvalid, os.path.join(output_path, "valid.pkl"))
-        x_test, y_test, mol_test = dtest
+def read_gen_data(dataset, min_size=0, max_size=None, valid_size=0.15, test_size=0.15, max_n=-1,**kwargs):
+    in_size = None
+    atom_list = const.ATOM_LIST
+    if dataset.lower() == 'qm9':
+        in_size = 5
+        atom_list = ['C', 'N', 'O', 'F']
+        kwargs.update(atom_list=atom_list)
+        data = pd.read_csv(os.path.join(DATA_DIR, 'qm9.csv'))
     else:
-        try:
-            if max_n > 0:
-                raise ValueError("Reading from file")
-            with tarfile.open(os.path.join(model_data_dir, "model.tar.gz"), "r:gz") as f:
-                train_pkl = f.extractfile(train_file)
-                x_train, y_train, mol_train = read_pkl(train_pkl)
+        raise ValueError(f"DATASET {dataset} is not yet supported")
+    
+    if max_n >0:
+        data = data.sample(max_n)
 
-                valid_pkl = f.extractfile(valid_file)            
-                x_valid, y_valid, mol_valid = read_pkl(valid_pkl)
-                
-                test_pkl = f.extractfile(test_file)            
-                x_test, y_test, mol_test = read_pkl(test_pkl)
-        except:
-            data = pd.read_csv(file_name)
-            if max_n >0 :
-                data = data[:max_n]
-            x_train = data[data['SPLIT'] == 'train'].values[:, 0]
-            x_train, x_valid = train_test_split(x_train, test_size=valid_size, shuffle=True)
-            x_test = data[data['SPLIT'] == 'test'].values[:, 0]
-            transform_fn = partial(transform_data, **kwargs)
-            dtrain, dvalid, dtest, = [transform_fn(*dt) for dt in [(x_train, np.ones_like(x_train)[:,np.newaxis]), (x_valid, np.ones_like(x_valid)[:,np.newaxis]), (x_test, np.ones_like(x_test)[:,np.newaxis])]]
-            x_train, y_train, mol_train = dtrain
-            #save_pkl(*dtrain, os.path.join(output_path,"train.pkl"))
-            x_valid, y_valid, mol_valid = dvalid
-            #save_pkl(*dvalid, os.path.join(output_path, "valid.pkl"))
-            x_test, y_test, mol_test = dtest
-            #save_pkl(*dtest, os.path.join(output_path, "test.pkl"))
-        
-    pad_to = kwargs.pop("max_size", 27)
-    train_dt = as_dataset(x_train, y_train, w=None, mols=mol_train, cuda=const.CUDA_OK, pad_to=pad_to, **kwargs)
-    test_dt = as_dataset(x_test, y_test, w=None, mols=mol_test, cuda=const.CUDA_OK, pad_to=pad_to, **kwargs)
-    valid_dt = as_dataset(x_valid, y_valid, w=None, mols=mol_valid, cuda=const.CUDA_OK, pad_to=pad_to, **kwargs)
-    print(f"Done with data loading !\n")
-    return train_dt, test_dt, valid_dt, x_train
+    x_train = data.values[:, 0]
+    x_train, x_valid = train_test_split(x_train, test_size=valid_size, shuffle=True)
+    x_train, x_test = train_test_split(x_train, test_size=test_size, shuffle=True)
+    # all_feat=False, add_bond=True, atom_list = ['C', 'N', 'O', 'F'] 
+    transformer = GraphTransformer(mol_size=[min_size, max_size], **kwargs)
+    #def __init__(self, smiles, max_size, transformer, cuda=False, pad_to=-1, **kwargs):
+    train_dt = GenMolDataset(x_train, transformer, pad_to=max_size)
+    valid_dt = GenMolDataset(x_valid, transformer, pad_to=max_size)
+    test_dt = GenMolDataset(x_test,  transformer, pad_to=max_size)
+    return train_dt, test_dt, valid_dt, in_size, atom_list

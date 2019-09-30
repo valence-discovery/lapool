@@ -6,7 +6,6 @@ import torch.optim as optim
 import traceback
 import torch.optim as optim
 from poutyne.framework.callbacks.lr_scheduler import _PyTorchLRSchedulerWrapper
-from gnnpooling.utils.graph_utils import data2mol, convert_mol_to_smiles
 from poutyne.framework.optimizers import all_optimizers_dict
 from poutyne.framework.callbacks import *
 from poutyne.framework.iterators import EpochIterator, StepIterator, _get_step_iterator
@@ -84,7 +83,6 @@ class TrainerCheckpoint(ModelCheckpoint):
 
     def save_file(self, fd, epoch, logs):
         print("==> Saving model state for epoch {}".format(epoch))
-        # also send an event here to notify the last time we have saved something 
         self.model.snapshot(fd, epoch)
         return fd
 
@@ -749,8 +747,7 @@ class GANScheduler(_PyTorchLRSchedulerWrapper):
             self.loaded_state = None
 
 class GANTrainer(Trainer):
-    def __init__(self, *args, n_critic=1, optimizer='adam',
-                 **kwargs):  # net, loss_fn, metrics={}, optimizer='adam', gpu=False, tasks=[], model_dir="", **kwargs):
+    def __init__(self, *args, n_critic=1, optimizer='adam', **kwargs):  # net, loss_fn, metrics={}, optimizer='adam', gpu=False, tasks=[], model_dir="", **kwargs):
         super(GANTrainer, self).__init__(*args, optimizer=optimizer, **kwargs)
         self.n_critic = n_critic
         if isinstance(optimizer, str):
@@ -823,7 +820,7 @@ class GANTrainer(Trainer):
         z = self.model.sample(batch_size).to(self.device)
         logits_real = self.model.forward_discriminator(x, mols=real_mols)
         fake_data = self.model.postprocess(self.model.forward_generator(z))
-        logits_fake = self.model.forward_discriminator(fake_data)
+        logits_fake = self.model.forward_discriminator(fake_data.detach())
 
         d_loss = self.model.adversarial_loss(logits_real, logits_fake, x, fake_data)
         self.D_optimizer.zero_grad()
@@ -843,7 +840,7 @@ class GANTrainer(Trainer):
             # Postprocess with Gumbel softmax
             fake_data = self.model.postprocess(gen_data, hard=True)
             logits_fake = self.model.forward_discriminator(fake_data)
-            fake_mols = data2mol(fake_data)
+            fake_mols = self.model.as_mol(fake_data)
             g_loss = self.model.generator_loss(logits_fake, x, real_mols, fake_data, fake_mols)
             g_loss.backward()
             self.G_optimizer.step()
@@ -867,7 +864,7 @@ class GANTrainer(Trainer):
         logits_fake, _ = self.model.forward_discriminator(fake_data)
         loss_fake = -torch.mean(logits_fake)
         # Fake Reward
-        fake_mols = data2mol(fake_data)
+        fake_mols = self.model.as_mol(fake_data)
         metrics = np.array([float(metric(fake_mols)) for metric in self.metrics[:-1]] + [float(loss_fake)])
 
         return 0, metrics, fake_mols
@@ -884,39 +881,41 @@ class GANTrainer(Trainer):
                 gen_data = self.model.forward_generator(z)
                 # Postprocess with Gumbel softmax
                 fake_data = self.model.postprocess(gen_data, hard=True)
-                fake_mols = data2mol(fake_data)
-                smiles = convert_mol_to_smiles(fake_mols)
+                fake_mols = self.model.as_mol(fake_data, largest_fragment=True)
+                smiles = self.model.mols_to_smiles(fake_mols)
                 mols.extend(smiles)
         return mols
 
 class AAETrainer(GANTrainer):
-    def __init__(self, *args, n_critic=1, optimizer='adam', pretrain=False, disc_coeff=1e-3, **kwargs):
+    def __init__(self, *args, n_critic=1, optimizer='adam', pretrain=False, save_every=500, disc_coeff=1, **kwargs):
         super(AAETrainer, self).__init__(*args, optimizer=optimizer, **kwargs)
         self.disc_coeff = disc_coeff
         self._pretrain = pretrain
         self.metrics_names[-1] = "dloss"
+        self.save_every = save_every
 
     def set_training_mode(self, pretrain=False):
         self._pretrain = pretrain
 
     def _fit_batch(self, x, *y, callback=Callback(), step=None, return_pred=False):
+        self.model.encoder.train()
+        self.model.decoder.train()
+        self.model.discriminator.train()
+        
+        real_mols, *y = y
+        x, *y = self._process_input(x, *y)
+        (adj, feat, mask) = x
+        b_size = self._get_batch_size(adj, feat, mask)
+
         # =================================================================================== #
         #   Train the autoencoder                              #
         # =================================================================================== #
-        *x, real_mols = x
-        b_size = self._get_batch_size(*x, *y)
-        z = self.model.forward_encoder(x, mols=real_mols)
-        # Compute loss with real graph.
-
-        x_hat = self.model.forward_decoder(z)
-        real_D_outputs = self.model.forward_discriminator(z)
-        rec_mols = data2mol(self.model.postprocess(x_hat, hard=True))
-        ae_loss = (1 - self.disc_coeff) * self.model.autoencoder_loss(z, x, real_mols, x_hat,
-                                                                      rec_mols) + self.disc_coeff * self.model.oneside_discriminator_loss(
-            real_D_outputs, truth=True)
-
         self.G_optimizer.zero_grad()
-        ae_loss.backward(retain_graph=True)
+        z, side_loss = self.model.forward_encoder(adj, feat, mols=real_mols, mask=mask)
+        # Compute loss with real graph.
+        x_hat = self.model.forward_decoder(z)
+        ae_loss = self.model.autoencoder_loss(x, x_hat, z, real_mols) + side_loss        
+        ae_loss.backward()
         self.G_optimizer.step()
 
         # =================================================================================== #
@@ -927,14 +926,30 @@ class AAETrainer(GANTrainer):
             self.model.encoder.eval()
             self.D_optimizer.zero_grad()
             z_pre = self.model.sample(b_size).to(self.device)
-            real_D_outputs = self.model.forward_discriminator(z)
+            z, _ = self.model.forward_encoder(adj, feat, mols=real_mols, mask=mask)
+            real_D_outputs = self.model.forward_discriminator(z.detach())
             fake_D_outputs = self.model.forward_discriminator(z_pre)
             d_loss = self.model.discriminator_loss(real_D_outputs, fake_D_outputs)
             d_loss.backward()
             self.D_optimizer.step()
 
-        self.model.log(real_mols, rec_mols, self.writer, step)
-        # Every n_critic times update generator
+
+            # =================================================================================== #
+            #   Train the Generator
+            # =================================================================================== #
+
+            self.G_optimizer.zero_grad()
+            self.model.encoder.train()
+            real_D_outputs = self.model.forward_discriminator(z)
+            g_loss = self.disc_coeff * self.model.oneside_discriminator_loss(real_D_outputs, truth=True)
+            g_loss.backward()
+            self.G_optimizer.step()
+
+        if step % self.save_every  == 0:
+            rec_mols = self.model.as_mol(self.model.postprocess(x_hat, gumbel=True, hard=True))
+            ori_mols = self.model.as_mol((adj, feat))
+            self.model.log(real_mols, rec_mols, ori_mols, self.writer, step)
+
         metrics = [0] * len(self.metrics_names)
         # Misc for saving the data
         for name, met in enumerate(self.metrics[:-1]):
@@ -946,19 +961,21 @@ class AAETrainer(GANTrainer):
         return float(ae_loss), np.array(metrics), None
 
     def _compute_loss_and_metrics(self, x, y, *, return_loss_tensor=False, return_pred=False):
-        *x, real_mols = x
+        real_mols, *y = y
         x, *y = self._process_input(x, *y)
+        (adj, feat, mask) = x
         b_size = self._get_batch_size(x, *y)
-        z = self.model.forward_encoder(x, mols=real_mols)
+        z, _ = self.model.forward_encoder(adj, feat, mols=real_mols, mask=mask)
         # Compute loss with real graph.
         x_hat = self.model.forward_decoder(z)
         # Z-to-target
-        rec_data = self.model.postprocess(x_hat, hard=True)
+        rec_data = self.model.postprocess(x_hat, gumbel=True, hard=True)
         # Fake Reward
-        rec_mols = data2mol(rec_data)
-        loss = self.model.autoencoder_loss(z, x, real_mols, x_hat, rec_mols)
-        metrics = np.array([float(metric(rec_mols)) for metric in self.metrics[:-1]] + [float(loss)])
-        return float(loss), metrics, rec_mols
+        #rec_mols = self.model.as_mol(rec_data)
+
+        loss = self.model.autoencoder_loss(x, x_hat, z, real_mols)
+        metrics = np.array([float(loss)])
+        return float(loss), metrics, None
 
     def sample_molecules(self, n_mols, batch_size=None):
         mols = []
@@ -971,22 +988,34 @@ class AAETrainer(GANTrainer):
                 z = self.model.sample(batch_size).to(self.device)
                 gen_data = self.model.forward_decoder(z)
                 # Postprocess with Gumbel softmax
-                fake_data = self.model.postprocess(gen_data, hard=True)
-                fake_mols = data2mol(fake_data)
-                smiles = convert_mol_to_smiles(fake_mols)
+                fake_data = self.model.postprocess(gen_data, gumbel=True, hard=True)
+                fake_mols = self.model.as_mol(fake_data)
+                smiles = self.model.mols_to_smiles(fake_mols)
                 mols.extend(smiles)
         return mols
 
-    def predict_generator(self, dataset, *, steps=None):
+    def predict_generator(self, generator, *, steps=None):
         if steps is None and hasattr(generator, '__len__'):
             steps = len(generator)
+
+        self.model.encoder.eval()
+        self.model.decoder.eval()
         pred_y = []
-        self.model.eval()
         with torch.no_grad():
             for _, (x, *y) in _get_step_iterator(steps, generator):
+                real_mols, *y = y
                 x, *y = self._process_input(x, *y)
-                pred_y.append(torch_to_numpy(self.model(x)))
-        return np.concatenate(pred_y)
+                (adj, feat, mask) = x
+                b_size = self._get_batch_size(x, *y)
+                z, _ = self.model.forward_encoder(adj, feat, mols=real_mols, mask=mask)
+                # Compute loss with real graph.
+                x_hat = self.model.forward_decoder(z)
+                # Z-to-target
+                rec_data = self.model.postprocess(x_hat, gumbel=True, hard=True)
+                rec_mols = self.model.as_mol(rec_data)
+                pred_y.extend(zip(self.model.mols_to_smiles(real_mols), self.model.mols_to_smiles(rec_mols)))
+
+        return pred_y
 
 
 class SupervisedTrainer(Trainer):

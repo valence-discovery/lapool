@@ -1,7 +1,7 @@
 import torch
 from rdkit import Chem 
 
-ATOM_LIST = ['C', 'N', 'O', 'S']
+ATOM_LIST = ['C', 'N', 'O', 'F']
 # BOND_TYPES = [Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE,
 #               Chem.rdchem.BondType.TRIPLE, Chem.rdchem.BondType.AROMATIC]
 

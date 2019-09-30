@@ -58,19 +58,16 @@ def smiles_to_mols(mols, ordered=True):
     return res
 
 
-def get_bond_feats(bond, add_bond=False):
+def get_bond_feats(bond, enc, add_bond=False):
     # Encode bond type as a feature vector
     if not add_bond:
         return np.ones(1, dtype=int)
     bond_type = bond.GetBondType()
-    encoding = np.zeros(len(const.BOND_TYPES), dtype=int)
     for i, v in enumerate(const.BOND_TYPES):
         if v == bond_type:
-            encoding[i] = 1
-    if np.sum(encoding) == 0:  # aka not found in accepted list
-        encoding[0] = 1
-    return encoding
-
+            enc[i] = 1
+            break
+    return enc
 
 def get_add_feats(atom, explicit_H=False, use_chirality=True):
     feats = []
@@ -107,7 +104,7 @@ def get_add_feats(atom, explicit_H=False, use_chirality=True):
 
 
 class GraphTransformer():
-    def __init__(self, mol_size=[0, 100], explicit_H=False, all_feat=True, add_bond=False, atom_list=None):
+    def __init__(self, mol_size=[0, 100], explicit_H=False, all_feat=True, add_bond=False, one_hot_bond=False, atom_list=None):
         # if this is not set, packing of graph would be expected later
         self.mol_size = mol_size
         self.n_atom_feat = 0
@@ -116,8 +113,9 @@ class GraphTransformer():
         self.all_feat = all_feat
         self.add_bond = add_bond
         self.bond_dim = 1
+        self.one_hot_bond = one_hot_bond
         if add_bond:
-            self.bond_dim = len(const.BOND_TYPES)
+            self.bond_dim = len(const.BOND_TYPES) + int(one_hot_bond)
         self.atom_list = atom_list or const.ATOM_LIST
         self._set_num_features()
 
@@ -208,13 +206,17 @@ class GraphTransformer():
                 # do not exceed hard limit on the maximum number of atoms
                 # allowed
                 bond = mol.GetBondBetweenAtoms(a_idx, n_idx)
-                bond_feat = get_bond_feats(bond, self.add_bond)
+                bond_feat = get_bond_feats(bond, np.zeros(self.bond_dim, dtype=np.int), self.add_bond)
                 if n_idx < n_atoms:
                     adj_matrix[n_idx, a_idx] = bond_feat
                     adj_matrix[a_idx, n_idx] = bond_feat
 
                 # keep self loop to empty, then rewrite graph conv
 
+        bond_one_hot = np.zeros(self.bond_dim, dtype=np.int)
+        if self.add_bond and self.one_hot_bond:
+            bond_one_hot[-1] = 1
+            adj_matrix[adj_matrix.sum(axis=-1)==0] = bond_one_hot
         n_atom_shape = len(atom_arrays[0])
         atom_matrix = np.zeros(
             (n_atoms, n_atom_shape)).astype(np.int)

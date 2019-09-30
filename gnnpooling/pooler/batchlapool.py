@@ -186,8 +186,7 @@ class LaPool(DiffPool):
 
         S, precluster = self.compute_clusters(adj=adj, x=x, h=h, nodes=mask)
 
-        new_feat = self.compute_feats(mapper=S.squeeze(
-            0), x=h.squeeze(0), precluster=precluster.squeeze(0))
+        new_feat = self.compute_feats(mapper=S, x=h, precluster=precluster)
 
         new_adj = self.compute_adj(mapper=S, adj=adj)
 

@@ -1,7 +1,9 @@
 import torch
+import dgl
+from functools import partial
 from torch import nn
 from gnnpooling.models.layers import get_pooling, get_activation, FCLayer
-from gnnpooling.utils.graph_utils import pack_graph, normalize_adj, compute_deg_matrix, get_path_length
+from gnnpooling.utils.graph_utils import pack_graph, normalize_adj, compute_deg_matrix, adj_mat_from_edges, dgl_from_edge_matrix
 
 
 class GCNLayer(nn.Module):
@@ -228,45 +230,104 @@ class GINLayer(nn.Module):
         G_self = torch.zeros_like(G)
         out = torch.matmul(G - G_self, h)
         out = (1 + self.eps) * h + out
+    
         out = self.net(out.view(-1, self.in_size))
         out = out.view(-1, G_size, self.out_size)
         if mask is not None:
             out = out * mask.view(-1, G_size, 1).to(out.dtype)
         return G, out
 
-
 class EdgeGraphLayer(nn.Module):
-    def __init__(self, input_dim, nedges=1, method="cat", output_dim=None, basemodule=GINLayer, **module_params):
+    def __init__(self, feat_dim, nedges, out_size=32, depth=2, pooling='max'):
         super(EdgeGraphLayer, self).__init__()
-        self.glayers = nn.ModuleList()
-        self.input_dim = input_dim
-        self._output_dim = output_dim or input_dim
-        for e in range(nedges):
-            self.glayers.append(basemodule(
-                input_dim, self._output_dim, **module_params))
-        self.concat = ("cat" in method)
-        self.nedges = nedges
+        self.feat_dim = feat_dim
+        self.edge_dim = nedges
+        self.out_size = out_size
+        self.update_layers = nn.ModuleList()
+        self.input_layer = nn.Linear(self.feat_dim, self.out_size)
+        self.depth = depth
+        for d in range(self.depth):
+            self.update_layers.append(FCLayer(self.out_size + self.edge_dim, self.out_size))
+        self.pooling = get_pooling(pooling)
+        self.readout = FCLayer(self.out_size, self.out_size)
 
     @property
     def output_dim(self):
-        if self.concat:
-            return self._output_dim * self.nedges
-        return self._output_dim
+        return self.out_size
+
+    def pack_graph(self, glist, nattr="h", eattr="he"):
+        if isinstance(glist, dgl.BatchedDGLGraph):
+            return glist
+        return dgl.batch(glist, nattr, eattr)
+
+    def pack_as_dgl(self, G, x, mask):
+        glist = dgl_from_edge_matrix(G, x, mask=mask, full_mat=False)
+        return self.pack_graph(glist)
+
+    def _update_nodes(self, batch_G):
+        h = batch_G.ndata['h']
+        return {'hv': self.input_layer(h)}
+
+    def _message(self, edges):
+        return {"src_h": edges.src['hv'], "he": edges.data["he"]}
+
+    def _reduce(self, nodes, updt=0):
+        hw = nodes.mailbox['src_h']  # Batch, Deg, Feats
+        he = nodes.mailbox['he'] # batch, deg, nedges
+        out = torch.cat([hw, he], dim=-1) #(B, deg, D+D+E)
+        b_size = out.size(0)
+        msg_size = out.size(-1)
+        out = self.update_layers[updt](out.view(-1, msg_size))
+        return {"msg": self.pooling(out.view(b_size, -1, self.out_size))}
+
+    def _apply(self, nodes):
+        hv = nodes.data['msg'] + nodes.data['hv']
+        return {'hv': hv}
+
+    def _forward(self, batch_G):
+        batch_G.ndata.update(self._update_nodes(batch_G))
+        for updt in range(self.depth):
+            batch_G.update_all(self._message, partial(self._reduce, updt=updt), self._apply)
+        return self.readout(batch_G.ndata['hv'])
 
     def forward(self, G, x, mask=None):
-        # G is expected to be "B, N, N, E"
-        x_list = []
-        for i, G_e in enumerate(torch.unbind(G, dim=-1)):
-            # G_e should be B, N, N
-            _, x_e = self.glayers[i](G_e, x)
-            x_list.append(x_e.squeeze(0))
-        G_f = G.sum(dim=-1)
-        if self.concat:
-            X_f = torch.cat(x_list, dim=-1)
-        else:
-            X_f = torch.stack(x_list, dim=0).sum(dim=0)
+        dgl_graph = self.pack_as_dgl(G, x, mask)
+        out = self._forward(dgl_graph)
+        adj_mat = adj_mat_from_edges(G)
+        return adj_mat, out
 
-        if mask is not None:
-            X_f = X_f * mask.view(X_f.shape[0], X_f.shape[1], 1).to(X_f.dtype)
 
-        return G_f, X_f
+# class EdgeGraphLayer(nn.Module):
+#     def __init__(self, input_dim, nedges=1, output_dim=None, method="cat", basemodule=GINLayer, **module_params):
+#         super(EdgeGraphLayer, self).__init__()
+#         self.glayers = nn.ModuleList()
+#         self.input_dim = input_dim
+#         self._output_dim = output_dim or input_dim
+#         for e in range(nedges):
+#             self.glayers.append(basemodule(input_dim, self._output_dim, **module_params))
+#         self.concat = ("cat" in method)
+#         self.nedges = nedges
+
+#     @property
+#     def output_dim(self):
+#         if self.concat:
+#             return self._output_dim * self.nedges
+#         return self._output_dim
+
+#     def forward(self, G, x, mask=None):
+#         # G is expected to be "B, N, N, E"
+#         x_list = []
+#         G_slice = torch.unbind(G, dim=-1)
+#         for i, G_e in enumerate(G_slice):
+#             _, x_e = self.glayers[i](G_e, x)
+#             x_list.append(x_e.squeeze(0))
+#         G_f = torch.stack(G_slice[:-1]).sum(dim=0)
+#         if self.concat:
+#             X_f = torch.cat(x_list, dim=-1)
+#         else:
+#             X_f = torch.stack(x_list, dim=0).sum(dim=0)
+
+#         if mask is not None:
+#             X_f = X_f * mask.view(X_f.shape[0], X_f.shape[1], 1).to(X_f.dtype)
+
+#         return G_f, X_f 

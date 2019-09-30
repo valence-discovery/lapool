@@ -1,49 +1,58 @@
 encoder: 
-    gather_dim: 128
-    conv_dims:
-      - 32
-      - 32
-    conv_dims_after:
-      - 128
-    linear_dim:
-      - 128
-      - 256
-    dropout: 0.1
-    activation: 'relu'
-    pool_arch: 
-      arch: "laplacian"
-      attn: 1
-      lap_hop: 3
-      hop: 3
-      concat: False
-      reg_mode: 0
-      dropk: 0.75
-
-
-critic: 
-    layers_dim:
-      - 128
-      - 64
-    dropout: 0.1
-    activation: 'relu'
+    conv_before:
+      - kernel_size: 64
+        activation: 'relu'
+        b_norm: False
+      - kernel_size: 64
+        activation: 'relu'
+        b_norm: False
+    conv_after:
+      - kernel_size: 128
+        activation: 'relu'
+        b_norm: False
+    fc_layers:
+      - out_size: 64
+        activation: 'relu'
+        b_norm: False
+    hpool: 
+      arch: ~
+    gpool:
+      arch: 'sum'
+    edge_layer:
+        depth: 3
+        pooling: 'avg'
 
 decoder:
-  layers_dim:
-    - 256
-    - 512
-  nodes_dim:
-    - 256
-    - 128
-  graph_dim:
-    - 256
-    - 256
-  dropout: 0.1
-  activation: 'relu'
+  layers:
+    - out_size: 128
+      activation: 'relu'
+      b_norm: False
+    - out_size: 128
+      activation: 'relu'
+      b_norm: False
+  node_layers:
+    - out_size: 64
+      activation: 'relu'
+      b_norm: False 
+  node_layers:
+    - out_size: 64
+      activation: 'relu'
+      b_norm: False
+  graph_layers:
+    - out_size: 128
+      activation: 'relu'
+      b_norm: False
+  graph_layers:
+    - out_size: 128
+      activation: 'relu'
+      b_norm: False
 
 discriminator:
   layers_dim:
-    - 128
     - 64
     - 32
-  dropout: 0.1
   activation: 'relu'
+  b_norm: True
+
+
+latent_dim: 128
