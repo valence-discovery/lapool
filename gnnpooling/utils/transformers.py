@@ -1,19 +1,7 @@
-import numpy as np
 import torch
-import warnings
-
-from collections import OrderedDict
+import numpy as np
 from rdkit import Chem
-from rdkit.Chem import rdMolDescriptors
-from rdkit.Chem.rdmolops import RDKFingerprint, RenumberAtoms
-from rdkit.Chem.rdMolDescriptors import GetHashedAtomPairFingerprintAsBitVect, \
-    GetHashedTopologicalTorsionFingerprintAsBitVect, Properties, GetMACCSKeysFingerprint
-from rdkit.Chem.AllChem import GetMorganFingerprintAsBitVect, GetErGFingerprint
-from rdkit.Chem.EState.Fingerprinter import FingerprintMol
-from rdkit.Chem.QED import properties, qed
-from rdkit.Avalon.pyAvalonTools import GetAvalonFP, GetAvalonCountFP
-from rdkit.DataStructs.cDataStructs import ExplicitBitVect
-from sklearn.base import TransformerMixin
+from rdkit.Chem.rdmolops import RenumberAtoms
 from gnnpooling.utils.tensor_utils import is_tensor, is_numpy, one_of_k_encoding
 from gnnpooling.utils import const
 
@@ -70,70 +58,6 @@ def smiles_to_mols(mols, ordered=True):
     return res
 
 
-def explicit_bit_vect_to_array(bitvector):
-    r"""
-    Convert a bit vector into an array
-
-    Arguments
-    ----------
-        bitvector: `rdkit.DataStructs.cDataStructs`
-            The struct of interest as a bitvector
-
-    Returns
-    -------
-        res: `numpy.ndarray`
-            array of binary elements
-    """
-    return np.array(list(map(int, bitvector.ToBitString())))
-
-
-def augmented_mol_properties(mol):
-    r"""
-    Get the set of molecular properties defined in rdkit for all molecule,
-    in addition of the following props:
-
-    * the number of heavy_atoms,
-    * the number of structural alerts
-    * qed value
-    * boolean conclusion of Lipinski rules of 5
-    * boolean conclusion of Veber rule
-    * boolean conclusion of Ghose rule
-
-    Arguments
-    ----------
-        mol: rdkit.Chem.Molecule
-            the molecule of interest
-
-    Returns
-    -------
-        props: list(float)
-            All the props of interest
-    """
-    # we first need to compute the chirality for the stereo
-    Chem.FindMolChiralCenters(mol, force=True)
-    p = Properties()
-    d = OrderedDict(zip(p.GetPropertyNames(),
-                        p.ComputeProperties(mol)))
-    d['heavy_atoms'] = mol.GetNumHeavyAtoms()
-
-    # qed
-    qed_props = properties(mol)
-    d['ALERTS'] = qed_props.ALERTS
-    d['qed'] = qed(mol)
-
-    # Lipinski rule
-    d['Lipinski'] = float(d['exactmw'] < 500 and d['lipinskiHBD'] < 5 and
-                          d['lipinskiHBA'] < 10 and d['CrippenClogP'] < 5)
-
-    # Veber rule
-    d['Veber'] = float(d['NumRotatableBonds'] < 500 and d['tpsa'] <= 140)
-
-    # Ghose rule
-    d['Ghose'] = float(d['tpsa'] <= 140 and -0.4 < d['CrippenClogP'] < 5.6 and
-                       160 <= d['exactmw'] < 480 and 20 <= d['heavy_atoms'] <= 70)
-    return list(d.values())
-
-
 def get_bond_feats(bond, add_bond=False):
     # Encode bond type as a feature vector
     if not add_bond:
@@ -182,108 +106,8 @@ def get_add_feats(atom, explicit_H=False, use_chirality=True):
     return np.asarray(feats, dtype=np.float32)
 
 
-class MoleculeTransformer(TransformerMixin):
-    r"""
-    Transform a molecule (rdkit.Chem.Mol object) into a feature representation.
-    This class is an abstract class, and all its children are expected to implement the `_transform` method.
-    """
-
-    def __init__(self):
-        super(MoleculeTransformer, self).__init__()
-
-    def fit(self, X, y=None, **fit_params):
-        return self
-
-    def _transform(self, mol):
-        r"""
-        Compute features for a single molecule.
-        This method need to be implemented by each child that inherits from MoleculeTransformer
-        :raises NotImplementedError: if the method is not implemented by the child class
-        Arguments
-        ----------
-            mol: Chem.Mol
-                molecule to transform into features
-
-        Returns
-        -------
-            features: the list of features
-
-        """
-        raise NotImplementedError('Missing implementation of _transform.')
-
-    def transform(self, mols, ignore_errors=True, **kwargs):
-        r"""
-        Compute the features for a set of molecules.
-
-        .. note::
-            Note that depending on the `ignore_errors` argument, all failed
-            featurization (caused whether by invalid smiles or error during
-            data transformation) will be substitued by None features for the
-            corresponding molecule. This is done, so you can find the positions
-            of these molecules and filter them out according to your own logic.
-
-        Arguments
-        ----------
-            mols: list(Chem.Mol) or list(str)
-                a list containing smiles or Chem.Mol objects
-            ignore_errors: bool, optional
-                Whether to silently ignore errors
-            kwargs:
-                named arguments that are to be passed to the `to_mol` function.
-
-        Returns
-        --------
-            features: a list of features for each molecule in the input set
-        """
-
-        features = []
-        for i, mol in enumerate(mols):
-            feat = None
-            if ignore_errors:
-                try:
-                    mol = to_mol(mol, **kwargs)
-                    feat = self._transform(mol)
-                except:
-                    pass
-            else:
-                mol = to_mol(mol, **kwargs)
-                feat = self._transform(mol)
-            features.append(feat)
-        return features
-
-    def __call__(self, mols, ignore_errors=True, **kwargs):
-        r"""
-        Calculate features for molecules. Using __call__, instead of transform. This function
-        will force ignore_errors to be true, regardless of your original settings, and is offered
-        mainly as a shortcut for data preprocessing. Note that most Transfomers allow you to specify
-        a return datatype.
-
-        Arguments
-        ----------
-            mols: (str or rdkit.Chem.Mol) iterable
-                SMILES of the molecules to be transformed
-            ignore_errors: bool, optional
-                Whether to ignore errors and silently fallback
-                (Default value = True)
-            kwargs: Named parameters for the transform method
-
-        Returns
-        -------
-            feats: array
-                list of valid features
-            ids: array
-                all valid molecule positions that did not failed during featurization
-        """
-        feats = self.transform(mols, ignore_errors=ignore_errors, **kwargs)
-        ids = []
-        for f_id, feat in enumerate(feats):
-            if feat is not None:
-                ids.append(f_id)
-        return list(filter(None.__ne__, feats)), ids
-
-
-class GraphTransformer(MoleculeTransformer):
-    def __init__(self, mol_size=[0, 100], explicit_H=False, all_feat=True, add_bond=False):
+class GraphTransformer():
+    def __init__(self, mol_size=[0, 100], explicit_H=False, all_feat=True, add_bond=False, atom_list=None):
         # if this is not set, packing of graph would be expected later
         self.mol_size = mol_size
         self.n_atom_feat = 0
@@ -291,21 +115,22 @@ class GraphTransformer(MoleculeTransformer):
         self.use_chirality = True
         self.all_feat = all_feat
         self.add_bond = add_bond
-        self._set_num_features()
         self.bond_dim = 1
         if add_bond:
             self.bond_dim = len(const.BOND_TYPES)
+        self.atom_list = atom_list or const.ATOM_LIST
+        self._set_num_features()
 
     @staticmethod
     def atom_dim():
-        return len(const.ATOM_LIST) + 1
+        return len(self.atom_list) + 1
 
     def _set_num_features(self):
         r"""Compute the number of features for each atom and bond
         """
         self.n_atom_feat = 0
         # add atom type required
-        self.n_atom_feat += len(const.ATOM_LIST) + 1
+        self.n_atom_feat += len(self.atom_list) + 1
         if self.all_feat:
             # add atom degree
             self.n_atom_feat += len(const.ATOM_DEGREE_LIST) + 1
@@ -373,7 +198,7 @@ class GraphTransformer(MoleculeTransformer):
             atom = mol.GetAtomWithIdx(a_idx)
             # pos = ((const.ATOM_LIST + [atom.GetSymbol()]).index(atom.GetSymbol()) +1 ) % (1+len(const.ATOM_LIST))
             # atom_arrays.append([pos])
-            atom_feats = one_of_k_encoding(atom.GetSymbol(), const.ATOM_LIST)
+            atom_feats = one_of_k_encoding(atom.GetSymbol(), self.atom_list)
             if self.all_feat:
                 atom_add_feat_arrays.append(
                     get_add_feats(atom, explicit_H=self.explicit_H, use_chirality=self.use_chirality))
@@ -396,7 +221,8 @@ class GraphTransformer(MoleculeTransformer):
         for idx, atom_array in enumerate(atom_arrays):
             atom_matrix[idx, :] = atom_array
         if atom_add_feat_arrays and self.all_feat:
-            feat_matrix = np.concatenate([atom_matrix, np.asarray(atom_add_feat_arrays)], axis=1)
+            feat_matrix = np.concatenate(
+                [atom_matrix, np.asarray(atom_add_feat_arrays)], axis=1)
             return (adj_matrix, feat_matrix)
         return adj_matrix, atom_matrix
 

@@ -294,7 +294,7 @@ def compute_deg_matrix(adj_mat, inv=False, selfloop=False):
 def inverse_diag_mat(mat, eps=1e-8):
     # add jitter to the matrix diag
     jitter = torch.eye(mat.shape[-1], device=mat.device).expand_as(mat)
-    if torch.all(mat.masked_select(jitter.byte())>0):
+    if torch.all(mat.masked_select(jitter.bool())>0):
         return mat.inverse() 
     return torch.inverse(jitter*eps + mat)
         

@@ -1,4 +1,3 @@
-import dgl
 import torch
 from torch import nn
 from gnnpooling.models.layers import get_pooling, get_activation, FCLayer

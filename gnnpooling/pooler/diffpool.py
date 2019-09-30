@@ -116,7 +116,7 @@ class DiffPool(GraphPool):
         """
         adj = mapper.transpose(-2, -1).matmul(adj).matmul(mapper)
         # Remove diagonal
-        adj = (1 - torch.eye(adj.shape[-1]).unsqueeze(0)) * adj
+        adj = (1 - torch.eye(adj.shape[-1]).unsqueeze(0).to(adj.device)) * adj
 
         return adj
 

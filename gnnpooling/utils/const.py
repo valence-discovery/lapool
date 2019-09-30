@@ -1,20 +1,9 @@
 import torch
 from rdkit import Chem 
 
-ATOM_LIST = ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe', 'Al', 'I', 'B',
-             'K', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co', 'Se', 'Ti', 'Zn', 'Li', 'Cu', 'Ni', 'Cd', 'Mn', 'Zr', 'Cr', 'Pt', 'Hg']
+ATOM_LIST = ['C', 'N', 'O', 'S']
 # BOND_TYPES = [Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE,
 #               Chem.rdchem.BondType.TRIPLE, Chem.rdchem.BondType.AROMATIC]
-
-# ATOM_LIST = ['Sn', 'I', 'Al', 'Zr', 'P', 'Cl', 'Ag', 'Ge', 'Cr',
-#         'Ba', 'Gd', 'Mn', 'Dy', 'H', 'S', 'K', 'Mo', 'Se',
-#         'As', 'Fe', 'Co', 'Sb', 'Sr', 'O', 'Au', 'Ni', 'Na',
-#         'Bi', 'Cd', 'In', 'Mg', 'V', 'Ti', 'Tl', 'B', 'Cu',
-#         'F', 'Pt', 'Pd', 'Br', 'Ca', 'C', 'Yb', 'N', 'Pb',
-#         'Be', 'Li', 'Zn', 'Si', 'Hg', 'Nd']
-
-# ATOM_LIST = ['I', 'Al', 'P', 'Cl', 'Mn', 'S', 'K', 'Fe', 'O', 'Ni', 'Na', 'Mg', 'B',
-#         'F', 'Br', 'Ca', 'C', 'N', 'Be', 'Li', 'Zn', 'Hg']
 
 BOND_TYPES = [Chem.rdchem.BondType.SINGLE, Chem.rdchem.BondType.DOUBLE, Chem.rdchem.BondType.TRIPLE]
 

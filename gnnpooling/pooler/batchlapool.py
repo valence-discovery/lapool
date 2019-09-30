@@ -13,7 +13,6 @@ from gnnpooling.pooler.diffpool import DiffPool
 from gnnpooling.utils.tensor_utils import *
 from gnnpooling.utils.sparsegen import Sparsegen, Sparsemax
 from gnnpooling.utils.graph_utils import find_largest_eigval, compute_deg_matrix, inverse_diag_mat
-from gnnpooling.pooler.lapool import _lazy_random_walk, Annealedsoftmax, get_signal
 
 EPS = 1e-8
 LARGE_VAL = 1e4
@@ -42,7 +41,7 @@ class LaPool(DiffPool):
     """
 
     def __init__(self, input_dim, cluster_dim, hidden_dim=None, attn='cos', hop=-1, reg_mode=1,
-                 concat=True, strict_leader=True, GLayer=GraphLayer, lap_hop=0, sigma=0.8, **kwargs):
+                 concat=False, strict_leader=True, GLayer=GraphLayer, lap_hop=0, sigma=0.8, **kwargs):
         net = GLayer(input_dim, input_dim, activation='relu')
         super(LaPool, self).__init__(input_dim, -1, net)
         self.cur_S = None
@@ -70,8 +69,9 @@ class LaPool(DiffPool):
             #     [(1/(i))*torch.matrix_power(adj.float(), i).clamp(max=1) for i in range(1, self.hop+1)]), dim=0)
             # force values without a path of at most length hop to not contribute
         else:  # compute full distance
-            gpath = np.array(
-                [1 / sparse.csgraph.shortest_path(x, directed=False) for x in adj.clone().detach().cpu().numpy()])
+            with np.errstate(divide='ignore'):
+                gpath = np.array(
+                    [1 / sparse.csgraph.shortest_path(x, directed=False) for x in adj.clone().detach().cpu().numpy()])
             gpath[np.isinf(gpath)] = 0  # normalized distance (higher, better)
             G = to_tensor(gpath, gpu=False, dtype=torch.float).to(adj.device)
 
@@ -92,11 +92,11 @@ class LaPool(DiffPool):
         deg_mat, adj = compute_deg_matrix(adj)
         if self.reg_mode == 0:
             laplacian = deg_mat - adj  #
-        elif self.reg_mode == 1:
-            laplacian = torch.eye(adj_size).to(adj.device) - torch.matmul(inverse_diag_mat(deg_mat), adj)
         else:
-            lambda_max = find_largest_eigval(adj)  # might be approximated by max degree
-            laplacian = (torch.eye(adj_size).to(adj.device) - adj / lambda_max)
+            laplacian = torch.eye(adj_size).to(adj.device) - torch.matmul(inverse_diag_mat(deg_mat), adj)
+        # else:
+        #     lambda_max = find_largest_eigval(adj)  # might be approximated by max degree
+        #     laplacian = (torch.eye(adj_size).to(adj.device) - adj / lambda_max)
         if self.lap_hop > 1:
             laplacian = torch.matrix_power(laplacian, self.lap_hop)
         return laplacian

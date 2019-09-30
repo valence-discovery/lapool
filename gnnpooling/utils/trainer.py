@@ -174,6 +174,7 @@ class Trainer(Model):
         self.initial_epoch = 0
         if snapshot_path:
             self.initial_epoch = self.restore(snapshot_path)
+        self.cuda()
 
     def network_state_dict(self):
         return self.model.state_dict()
@@ -386,25 +387,6 @@ class Trainer(Model):
         Returns
         -------
             List of dict containing the history of each epoch.
-
-        Examples
-        --------
-
-            .. code-block:: python
-
-                model = Model(pytorch_module, optimizer, loss_function)
-                history = model.fit_generator(train_generator,
-                                              valid_generator,
-                                              epochs=num_epochs,
-                                              verbose=False)
-                print(*history, sep="\\n")
-
-            .. code-block:: python
-
-                {'epoch': 1, 'loss': 0.4048105351626873, 'val_loss': 0.35831213593482969}
-                {'epoch': 2, 'loss': 0.27947457544505594, 'val_loss': 0.25963697880506514}
-                {'epoch': 3, 'loss': 0.20913131050765515, 'val_loss': 0.20263003259897233}
-                ...
 
         """
         initial_epoch = self.initial_epoch or initial_epoch # use model epoch number if defined
@@ -1006,46 +988,26 @@ class AAETrainer(GANTrainer):
                 pred_y.append(torch_to_numpy(self.model(x)))
         return np.concatenate(pred_y)
 
+
 class SupervisedTrainer(Trainer):
-    def __init__(self, *args, **kwargs):
-        super(SupervisedTrainer, self).__init__(*args, **kwargs)
+    def _compute_loss_and_metrics(self, x, y, *, return_loss_tensor=False, return_pred=False):
+        (adj, x, mask), *y = self._process_input(x, *y)
+        mols, y, *w = y
+        if len(w):
+            w = w[0]
+        else:
+            w = None
+        pred_y, side_loss = self.model(x, adj, mask)
+        loss = self.loss_function(pred_y, y, weights=w) + side_loss
+        if not return_loss_tensor:
+            loss = float(loss)
 
-    def restore(self, path):
-        r"""
-        Restore the training state (model, optimizer) saved in path, inside the current
-        instance of the class, then return the next epoch number. If a loss function is
-        not currently defined, it is loaded from the pickle object.
-
-        Arguments
-        ----------
-            path: str
-                path to the file containing the serialized model.
-
-        Returns
-        -------
-            The last epoch saved + 1
-        """
-        epoch = 0
-        if os.path.isfile(path):
-            checkpoint = torch.load(path)
-            self.model.load_state_dict(checkpoint['net'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.tasks = checkpoint['tasks']
-            self.gpu = checkpoint['gpu']
-            self.model_dir = checkpoint['model_dir']
-            epoch = checkpoint["epoch"]
-            self.is_trained = True
-            if not self.loss_function and 'loss' is checkpoint.keys():
-                self.loss_function = checkpoint["loss"]
-        return epoch + 1
-
+        with torch.no_grad():
+            metrics = self._compute_metrics(pred_y, y)
+        pred_y = torch_to_numpy(pred_y) if return_pred else None
+        return loss, metrics, pred_y
 
     def _compute_metrics(self, pred_y, y):
         if isinstance(pred_y, tuple):
             pred_y = pred_y[0]
-        
-        if pred_y.shape[-1] == 1:
-            pred_y = torch.sigmoid(pred_y)
-        else:
-            pred_y = torch.softmax(pred_y, dim=1)
-        return np.array([float(metric(pred_y.detach(), *y)) for metric in self.metrics])
+        return np.array([float(metric(pred_y.detach(), y)) for metric in self.metrics])
