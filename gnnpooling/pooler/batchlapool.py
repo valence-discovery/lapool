@@ -40,7 +40,7 @@ class LaPool(DiffPool):
     Attempt to batch laplacian pooling by taking using a selection mask
     """
 
-    def __init__(self, input_dim, cluster_dim, hidden_dim=None, attn='cos', hop=-1, reg_mode=1,
+    def __init__(self, input_dim, cluster_dim, hidden_dim=None, attn='cos', hop=-1, reg_mode=0,
                  concat=False, strict_leader=True, GLayer=GraphLayer, lap_hop=0, sigma=0.8, **kwargs):
         net = GLayer(input_dim, input_dim, activation='relu')
         super(LaPool, self).__init__(input_dim, -1, net)
@@ -129,7 +129,8 @@ class LaPool(DiffPool):
         k = self.k
         mask = nei_laplacian_normalized > 0
         if k is None:
-            mask = nei_laplacian_diff * nodes.float() > 0
+            # print(mask.shape, nodes.shape, nei_laplacian_diff.shape)
+            mask = nei_laplacian_diff * nodes.float().squeeze(-1) > 0
             # find best max k for this batch
             k = torch.max(torch.sum(mask, dim=-1))  # maximum number of valid centroid in the batch
             # note that in this we relax the assumption by computing 

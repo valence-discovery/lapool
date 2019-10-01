@@ -179,7 +179,7 @@ def data2mol(data, atom_decoder):
     return mols
 
 def get_largest_fragment(mol):
-    return max(rdmolops.GetMolFrags(mol, asMols=True), default=mol, key=lambda m: m.GetNumAtoms())
+    return max(rdmolops.GetMolFrags(mol, asMols=True, sanitizeFrags=False), default=mol, key=lambda m: m.GetNumAtoms())
 
 
 def adj2mol(adj_mat, atom_one_hot, atom_decoder, edge_decoder=EDGE_DECODER):
@@ -219,9 +219,15 @@ def adj2mol(adj_mat, atom_one_hot, atom_decoder, edge_decoder=EDGE_DECODER):
     return None
 
 
-def convert_mol_to_smiles(mollist):
+
+def convert_mol_to_smiles(mollist, sanitize=False):
     smiles = []
     for mol in mollist:
+        if sanitize:
+            try:
+                mol = Chem.SanitizeMol(mol)
+            except:
+                mol = None
         if mol:
             _ =[x.ClearProp('molAtomMapNumber') for x in mol.GetAtoms()]
             smiles.append(Chem.MolToSmiles(mol))

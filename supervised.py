@@ -2,11 +2,13 @@ import click
 import os
 import json
 import numpy as np
+import sys
 import torch
 import torch.nn as nn
 import joblib
 import torch.nn.functional as F
 import yaml
+import traceback
 
 from collections import defaultdict
 from functools import partial
@@ -109,15 +111,16 @@ class Net(nn.Module):
 @click.option('--hparams', '-h', type=click.Path(exists=True), help="File containing the hpool params")
 @click.option('--output_path', '-o', default="", help="Output folder")
 @click.option('--repeats', '-r', type=int, default=1, help="Number of repeat to perform under alternative splits")
-@click.option('--epochs', '-e', type=int, default=100, help="Number of epochs")
+@click.option('--epochs', '-e', type=int, default=100, help="Batch size")
+@click.option('--batch_size', '-b', type=int, default=32, help="Number of epochs")
 @click.option('--cpu', is_flag=True, help="Force use cpu")
-def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, cpu):
+def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, batch_size, cpu):
     torch.backends.cudnn.benchmark = True
     np.random.seed(42)
     torch.manual_seed(42)
     hpool_params = {}
     hpool_params_add = {}
-    hidden_dim = int(ksize * max_nodes)
+    hidden_dim = int(ksize * max_nodes) or None
     if hparams:
         with open(hparams) as IN:
             hpool_params_add.update(json.load(IN))
@@ -143,22 +146,23 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
         model_dir = os.path.join(output_path, arch, str(repeat))
         os.makedirs(model_dir, exist_ok=True)
         (train_dt, valid_dt, test_dt), in_size, out_size = load_supervised_dataset(dataset, min_size=min_nodes, max_size=max_nodes)
-        generator = GraphDataLoader
+        generator = partial(GraphDataLoader, drop_last=True)
         loss = get_loss(dataset)
         model = Net(max_nodes, in_size, out_size, config=config)
         #print(in_size, out_size)
         #print(model)
+        SIGMOID = (dataset.upper() in ['ALERTS', 'FRAGMENTS', 'TOX21'])
         print(f"==> Training step ({repeat+1}/{repeats})")
         trainer = SupervisedTrainer(model, loss_fn=loss, metrics=METRICS,
-                                    gpu=(not cpu), model_dir=model_dir, op__lr=1e-3)
-        trainer.fit(train_dt, valid_dt, batch_size=64, epochs=epochs, generator_fn=generator, checkpoint='model_{}.pth.tar'.format(arch), tboardX="logs",
-                    checkpoint__restore_best=True, reduce_lr={"verbose": True, "factor": 0.5, "cooldown": 3}, early_stopping={"patience": min(int(0.25*epochs), 50), "min_delta": 1e-3})
+                                    gpu=(not cpu), model_dir=model_dir, op__lr=1e-4, sigmoid=SIGMOID)
+        trainer.fit(train_dt, valid_dt, batch_size=batch_size, epochs=epochs, generator_fn=generator, checkpoint='model_{}.pth.tar'.format(arch), tboardX="logs",
+                    checkpoint__restore_best=True, reduce_lr={"verbose": True, "factor": 0.5, "cooldown": 3}, early_stopping={"patience": 10, "min_delta": 1e-3})
         print(f"==> Evaluation step ({repeat+1}/{repeats})")
         loss, metric, pred = trainer.evaluate(
-            test_dt, batch_size=64, return_pred=True, generator_fn=generator)
+            test_dt, batch_size=len(test_dt)//10, return_pred=True, generator_fn=GraphDataLoader)
         loss_val, metric_val, pred_val = trainer.evaluate(
-            valid_dt, batch_size=64, return_pred=True, generator_fn=generator)
-        if dataset.upper() in ['ALERTS', 'FRAGMENTS', 'TOX21']:
+            valid_dt, batch_size=len(valid_dt)//10, return_pred=True, generator_fn=GraphDataLoader)
+        if SIGMOID:
             y_pred = torch.sigmoid(torch.Tensor(pred)).numpy()
             y_pred_val = torch.sigmoid(torch.Tensor(pred_val)).numpy()
         else:
@@ -174,8 +178,8 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
                 try:
                     m_value = metric(pred, dt.y)
                     metric_results[dtname][metric_name] = m_value
-                except:
-                    pass
+                except Exception as e:
+                    traceback.print_exc(file=sys.stdout)
             np.savez_compressed(os.path.join(
                 model_dir, '{}_{}.npz'.format(dtname, arch)), test=dt.y, pred=pred)
             

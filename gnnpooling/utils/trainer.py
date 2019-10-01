@@ -1019,6 +1019,10 @@ class AAETrainer(GANTrainer):
 
 
 class SupervisedTrainer(Trainer):
+    def __init__(self, *args, sigmoid=True, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sigmoid = sigmoid
+
     def _compute_loss_and_metrics(self, x, y, *, return_loss_tensor=False, return_pred=False):
         (adj, x, mask), *y = self._process_input(x, *y)
         mols, y, *w = y
@@ -1039,4 +1043,8 @@ class SupervisedTrainer(Trainer):
     def _compute_metrics(self, pred_y, y):
         if isinstance(pred_y, tuple):
             pred_y = pred_y[0]
-        return np.array([float(metric(pred_y.detach(), y)) for metric in self.metrics])
+        if self.sigmoid:
+            pred_y = torch.sigmoid(pred_y.detach())
+        else:
+            pred_y = torch.softmax(pred_y.detach(), dim=-1)
+        return np.array([float(metric(pred_y, y)) for metric in self.metrics])
