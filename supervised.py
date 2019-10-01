@@ -111,8 +111,8 @@ class Net(nn.Module):
 @click.option('--hparams', '-h', type=click.Path(exists=True), help="File containing the hpool params")
 @click.option('--output_path', '-o', default="", help="Output folder")
 @click.option('--repeats', '-r', type=int, default=1, help="Number of repeat to perform under alternative splits")
-@click.option('--epochs', '-e', type=int, default=100, help="Batch size")
-@click.option('--batch_size', '-b', type=int, default=32, help="Number of epochs")
+@click.option('--epochs', '-e', type=int, default=100, help="Number of epochs")
+@click.option('--batch_size', '-b', type=int, default=32, help="Batch size")
 @click.option('--cpu', is_flag=True, help="Force use cpu")
 def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, batch_size, cpu):
     torch.backends.cudnn.benchmark = True
