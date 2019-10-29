@@ -261,7 +261,7 @@ class EdgeGraphLayer(nn.Module):
         return dgl.batch(glist, nattr, eattr)
 
     def pack_as_dgl(self, G, x, mask):
-        glist = dgl_from_edge_matrix(G, x, mask=mask, full_mat=False)
+        glist = dgl_from_edge_matrix(G, x, mask=mask, full_mat=True)
         return self.pack_graph(glist)
 
     def _update_nodes(self, batch_G):
@@ -280,14 +280,14 @@ class EdgeGraphLayer(nn.Module):
         out = self.update_layers[updt](out.view(-1, msg_size))
         return {"msg": self.pooling(out.view(b_size, -1, self.out_size))}
 
-    def _apply(self, nodes):
+    def apply(self, nodes):
         hv = nodes.data['msg'] + nodes.data['hv']
         return {'hv': hv}
 
     def _forward(self, batch_G):
         batch_G.ndata.update(self._update_nodes(batch_G))
         for updt in range(self.depth):
-            batch_G.update_all(self._message, partial(self._reduce, updt=updt), self._apply)
+            batch_G.update_all(self._message, partial(self._reduce, updt=updt), self.apply)
         return self.readout(batch_G.ndata['hv'])
 
     def forward(self, G, x, mask=None):
