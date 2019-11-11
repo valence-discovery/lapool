@@ -7,18 +7,18 @@ import warnings
 import torch.nn as nn
 import pickle
 import sys
-import tarfile
 import gc
 import yaml
 
 warnings.filterwarnings(action='ignore')
 from functools import partial
 from collections import defaultdict
-from gnnpooling.utils.read_data import read_gen_data
-from gnnpooling.utils.trainer import AAETrainer, GANScheduler, TrainerCheckpoint, EarlyStopping
-from gnnpooling.models.networks import Encoder, Decoder, MLPdiscriminator
-from gnnpooling.models.aae import AAE
-from gnnpooling.utils.datasets import GraphDataLoader
+from .gnnpooling.utils.read_data import read_gen_data
+from .gnnpooling.utils.trainer import AAETrainer, GANScheduler, TrainerCheckpoint, EarlyStopping
+from .gnnpooling.utils.const import BOND_TYPES
+from .gnnpooling.models.networks import Encoder, Decoder, MLPdiscriminator
+from .gnnpooling.models.aae import AAE
+from .gnnpooling.utils.datasets import GraphDataLoader
 from tensorboardX import SummaryWriter
 from pytoune.framework.callbacks import TensorBoardLogger
 from joblib import Parallel, delayed
@@ -27,56 +27,12 @@ lg = RDLogger.logger()
 lg.setLevel(RDLogger.CRITICAL)
 
 
-def save_model(model, output):
-    try:
-        model.save(output)
-    except:
-        joblib.dump(model, output)
-
-@click.command()
-@click.option('--arch', '-a', default='gnn', help="Type of model")
-@click.option('--dataset', '-d', required=True, help="Path to dataset")
-@click.option('--max_nodes', default=9, type=int, help="Maximum number of nodes")
-@click.option('--min_nodes', default=0, type=int, help="Minimum number of nodes")
-@click.option('--ksize', '-k', default=0.10, type=float, help="Percentage of nodes to retains during hierarchical pooling")
-@click.option('--config_file', '-c', required=True, type=click.Path(exists=True), help="File containing the model global configuration file")
-@click.option('--hparams', '-h', type=click.Path(exists=True), help="File containing the hpool params")
-@click.option('--output_path', '-o', default="", help="Output folder")
-@click.option('--epochs', '-e', type=int, default=100, help="Number of epochs")
-@click.option('--batch_size', '-b', type=int, default=32, help="Batch size")
-@click.option('--max_n', default=-1, type=int, help="Maxinum number of datum to consider")
-@click.option('--cpu', is_flag=True, help="Force use cpu")
-@click.option('--samples', default=1000, type=int,  help="Number of molecules to samples")
-@click.option('--save_every', default=0.25, type=float,  help="Percentage of saves per epochs")
-def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, epochs, batch_size, max_n, cpu, samples, save_every):
-    torch.backends.cudnn.benchmark = True
-    np.random.seed(42)
-    torch.manual_seed(42)
-    hpool_params = {}
-    hpool_params_add = {}
-    hidden_dim = int(ksize * max_nodes)
-    if hparams:
-        with open(hparams) as IN:
-            hpool_params_add.update(json.load(IN))
-        dataset = hpool_params_add.pop("task", dataset)
-        arch = hpool_params_add.get("arch", arch)
-    if 'topk' in arch:
-        hpool_params = dict(arch="topk", hidden_dim=hidden_dim)
-    elif 'diff' in arch:
-        hpool_params = dict(arch="diff", hidden_dim=hidden_dim)
-    elif 'lap' in arch:
-        hpool_params = dict(
-            arch="laplacian", hidden_dim=hidden_dim, cluster_dim=128)
-    with open(config_file) as IN:
-        config = yaml.safe_load(IN)
-    nedges = 3 #
-    hpool_params.update(hpool_params_add)
-    print(hpool_params)
-    config['encoder']["hpool"].update(hpool_params)
-    train_dt, test_dt, valid_dt, n_embed, atom_list = read_gen_data(dataset, max_n=max_n, min_size=min_nodes, max_size=max_nodes, all_feat=False, add_bond=(nedges >1), one_hot_bond=True)
+def train(dataset, config, output_path, epochs=1, max_n=-1, cpu=False, save_every=0.2, max_nodes=None, min_nodes=0, **kwargs):
+    batch_size = config.pop('batch_size', 32)
+    nedges = len(BOND_TYPES) #
+    train_dt, test_dt, valid_dt, n_embed, atom_list, max_nodes = read_gen_data(dataset, max_n=max_n, min_size=min_nodes, max_size=max_nodes, all_feat=False, add_bond=True, one_hot_bond=True)
     # X, y, mols = transform_data(smiles, y, min_size=min_size, max_size=max_size, all_feat=all_feat, add_bond=with_bond)
-    output_path = os.path.join(output_path, arch)
-    latent_dim = int(config.get("latent_dim",  512))
+    latent_dim = int(config.get("latent_dim",  128))
     train_generator = GraphDataLoader(train_dt, batch_size=batch_size, shuffle=True)
     valid_generator = GraphDataLoader(valid_dt, batch_size=batch_size, shuffle=True)
     callback = []
@@ -101,21 +57,74 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
     network.set_decoder(decoder)
     network.set_discriminator(discriminator)
 
-    trainer = AAETrainer(network, loss_fn=None, metrics={},  gpu=(not cpu), D_op__lr=5e-3, G_op__lr=1e-2, model_dir=output_path, save_every=save_every) 
+    trainer = AAETrainer(network, loss_fn=None, metrics={},  gpu=(not cpu), D_op__lr=5e-4, G_op__lr=5e-3, model_dir=output_path, save_every=save_every) 
     trainer.writer = writer
     trainer.set_training_mode(pretrain=False)
     trainer.fit_generator(train_generator, valid_generator, epochs=epochs, callbacks=callback)
 
-    mol_generated = trainer.sample_molecules(samples)
-    with open(os.path.join(output_path, "mols.txt"), "w") as MOL_OUT:
-        MOL_OUT.write("\n".join(mol_generated))
-    del mol_generated
-    gc.collect()
+    # evaluate accuracy here on test 
     test_generator = GraphDataLoader(test_dt, batch_size=batch_size)
     pred_dict = trainer.predict_generator(test_generator)
     with open(os.path.join(output_path, "predictions.json"), 'w') as out_file:
         json.dump(pred_dict, out_file)
+    return trainer
+
+
+def sample(trainer, samples, output_file=None):
+    mol_generated = trainer.sample_molecules(samples)
+    if not output_file:
+        with open(output_file, "w") as MOL_OUT:
+            MOL_OUT.write("\n".join(mol_generated))
+    return mol_generated
+    
+
+@click.command()
+@click.option('--arch', '-a', default='gnn', help="Type of model")
+@click.option('--dataset', '-d', required=True, help="Path to dataset")
+@click.option('--max_nodes', default=9, type=int, help="Maximum number of nodes")
+@click.option('--min_nodes', default=0, type=int, help="Minimum number of nodes")
+@click.option('--ksize', '-k', default=0.10, type=float, help="Percentage of nodes to retains during hierarchical pooling")
+@click.option('--config_file', '-c', required=True, type=click.Path(exists=True), help="File containing the model global configuration file")
+@click.option('--hparams', '-h', type=click.Path(exists=True), help="File containing the hpool params")
+@click.option('--output_path', '-o', default="", help="Output folder")
+@click.option('--epochs', '-e', type=int, default=100, help="Number of epochs")
+@click.option('--batch_size', '-b', type=int, default=32, help="Batch size")
+@click.option('--max_n', default=-1, type=int, help="Maxinum number of datum to consider")
+@click.option('--cpu', is_flag=True, help="Force use cpu")
+@click.option('--samples', default=1000, type=int,  help="Number of molecules to samples")
+@click.option('--save_every', default=0.2, type=float,  help="Percentage of saves per epochs")
+def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, epochs, batch_size, max_n, cpu, samples, save_every):
+    torch.backends.cudnn.benchmark = True
+    np.random.seed(42)
+    torch.manual_seed(42)
+    hpool_params = {}
+    hpool_params_add = {}
+    hidden_dim = int(ksize * max_nodes)
+    if hparams:
+        with open(hparams) as IN:
+            hpool_params_add.update(json.load(IN))
+        dataset = hpool_params_add.pop("task", dataset)
+        arch = hpool_params_add.get("arch", arch)
+    if 'topk' in arch:
+        hpool_params = dict(arch="topk", hidden_dim=hidden_dim)
+    elif 'diff' in arch:
+        hpool_params = dict(arch="diff", hidden_dim=hidden_dim)
+    elif 'lap' in arch:
+        hpool_params = dict(
+            arch="laplacian", hidden_dim=hidden_dim, cluster_dim=128)
+    with open(config_file) as IN:
+        config = yaml.safe_load(IN)
+    hpool_params.update(hpool_params_add)
+    config['encoder']["hpool"].update(hpool_params)
     #print(pred_dict)
+    output_path = os.path.join(output_path, arch)
+    config["batch_size"] = batch_size  
+    trainer = train(dataset, config, epochs, output_path, max_n=max_n, cpu=cpu, save_every=save_every, max_nodes=max_nodes, min_nodes=min_nodes)
+    mol_generated = sample(trainer, samples, os.path.join(output_path, "mols.txt"))
+    del mol_generated
+    gc.collect()
+    return trainer
+
 
 if __name__ == '__main__':
     cli()

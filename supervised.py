@@ -116,8 +116,6 @@ class Net(nn.Module):
 @click.option('--cpu', is_flag=True, help="Force use cpu")
 def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, batch_size, cpu):
     torch.backends.cudnn.benchmark = True
-    np.random.seed(42)
-    torch.manual_seed(42)
     hpool_params = {}
     hpool_params_add = {}
     hidden_dim = int(ksize * max_nodes) or None
@@ -143,6 +141,8 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
     arch = f"{arch}_{hidden_dim}"
 
     for repeat in range(repeats):
+        np.random.seed(repeat)
+        torch.manual_seed(repeat)
         model_dir = os.path.join(output_path, arch, str(repeat))
         os.makedirs(model_dir, exist_ok=True)
         (train_dt, valid_dt, test_dt), in_size, out_size = load_supervised_dataset(dataset, min_size=min_nodes, max_size=max_nodes)

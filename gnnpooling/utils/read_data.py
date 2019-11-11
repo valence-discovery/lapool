@@ -201,7 +201,6 @@ def _load_mol_dataset(dataset_file, tasks, split="stratified", test_size=0.1, va
     train = balancer.transform(train)
     valid = balancer.transform(valid)
     test = balancer.transform(test)
-
     transformer = GraphTransformer(mol_size=[min_size, max_size], **kwargs)
     datasets = []
     for dt in (train, valid, test):
@@ -225,14 +224,14 @@ def load_supervised_dataset(dataset, min_size=0, max_size=None, test_size=0.1, v
             f"Unknown dataset {dataset}, accepted values are {BENCHMARKS}")
 
     if dataset == 'TOX21':
-        tox21_tasks = [
+        tasks = [
             'NR-AR', 'NR-AR-LBD', 'NR-AhR', 'NR-Aromatase', 'NR-ER', 'NR-ER-LBD',
             'NR-PPAR-gamma', 'SR-ARE', 'SR-ATAD5', 'SR-HSE', 'SR-MMP', 'SR-p53'
         ]
         data_path = os.path.join(DATA_DIR, f'TOX21/tox21.csv.gz')
         atom_list = ['C', 'N', 'O', 'S', 'F', 'Si', 'P', 'Cl', 'Br', 'Mg', 'Na', 'Ca', 'Fe', 'Al', 'I', 'B',
                      'K', 'Yb', 'Sb', 'Sn', 'Ag', 'Pd', 'Co', 'Se', 'Ti', 'Zn', 'Li', 'Cu', 'Ni', 'Cd', 'Mn', 'Zr', 'Cr', 'Pt', 'Hg']
-        return _load_mol_dataset(tasks, test_size=test_size, valid_size=valid_size, min_size=min_size, max_size=max_size, atom_list=atom_list, **kwargs)
+        return _load_mol_dataset(data_path, tasks, test_size=test_size, valid_size=valid_size, min_size=min_size, max_size=max_size, atom_list=atom_list, **kwargs)
 
     elif dataset in ['FRAGMENTS', 'ALERTS']:
         data_path = os.path.join(
@@ -254,8 +253,23 @@ def read_gen_data(dataset, min_size=0, max_size=None, valid_size=0.15, test_size
         atom_list = ['C', 'N', 'O', 'F']
         kwargs.update(atom_list=atom_list)
         data = pd.read_csv(os.path.join(DATA_DIR, 'qm9.csv'))
+        max_size  =  max_size or 9
     else:
-        raise ValueError(f"DATASET {dataset} is not yet supported")
+        data = pd.read_csv(dataset)
+        atom_list = set([])
+        old_max_size = max_size
+        max_size = 0
+        for m in data.values[:, 0]:    
+            m = to_mol(m)
+            if m:
+                all_atoms = [a.GetSymbol() for a in m.GetAtoms()]
+                atom_list.update(all_atoms)
+                max_size = max(max_size, len(all_atoms))
+        atom_list = list(sorted(atom_list))
+        kwargs.update(atom_list=atom_list)
+        in_size = len(atom_list) + 1
+        if old_max_size:
+            max_size = old_max_size
     
     if max_n >0:
         data = data.sample(max_n)
@@ -269,4 +283,4 @@ def read_gen_data(dataset, min_size=0, max_size=None, valid_size=0.15, test_size
     train_dt = GenMolDataset(x_train, transformer, pad_to=max_size)
     valid_dt = GenMolDataset(x_valid, transformer, pad_to=max_size)
     test_dt = GenMolDataset(x_test,  transformer, pad_to=max_size)
-    return train_dt, test_dt, valid_dt, in_size, atom_list
+    return train_dt, test_dt, valid_dt, in_size, atom_list, max_size
