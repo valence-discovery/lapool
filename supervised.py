@@ -102,7 +102,7 @@ class Net(nn.Module):
 
 
 @click.command()
-@click.option('--arch', '-a', default='gnn', help="Type of model")
+@click.option('--arch', '-a', default='laplacian', help="Type of model")
 @click.option('--dataset', '-d', default='tox21', help="Supervised dataset")
 @click.option('--max_nodes', default=50, type=int, help="Maximum number of nodes")
 @click.option('--min_nodes', default=5, type=int, help="Minimum number of nodes")

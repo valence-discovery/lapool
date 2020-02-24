@@ -13,12 +13,12 @@ import yaml
 warnings.filterwarnings(action='ignore')
 from functools import partial
 from collections import defaultdict
-from .gnnpooling.utils.read_data import read_gen_data
-from .gnnpooling.utils.trainer import AAETrainer, GANScheduler, TrainerCheckpoint, EarlyStopping
-from .gnnpooling.utils.const import BOND_TYPES
-from .gnnpooling.models.networks import Encoder, Decoder, MLPdiscriminator
-from .gnnpooling.models.aae import AAE
-from .gnnpooling.utils.datasets import GraphDataLoader
+from gnnpooling.utils.read_data import read_gen_data
+from gnnpooling.utils.trainer import AAETrainer, GANScheduler, TrainerCheckpoint, EarlyStopping
+from gnnpooling.utils.const import BOND_TYPES
+from gnnpooling.models.networks import Encoder, Decoder, MLPdiscriminator
+from gnnpooling.models.aae import AAE
+from gnnpooling.utils.datasets import GraphDataLoader
 from tensorboardX import SummaryWriter
 from pytoune.framework.callbacks import TensorBoardLogger
 from joblib import Parallel, delayed
@@ -79,11 +79,11 @@ def sample(trainer, samples, output_file=None):
     
 
 @click.command()
-@click.option('--arch', '-a', default='gnn', help="Type of model")
+@click.option('--arch', '-a', default='laplacian', help="Type of model")
 @click.option('--dataset', '-d', required=True, help="Path to dataset")
 @click.option('--max_nodes', default=9, type=int, help="Maximum number of nodes")
 @click.option('--min_nodes', default=0, type=int, help="Minimum number of nodes")
-@click.option('--ksize', '-k', default=0.10, type=float, help="Percentage of nodes to retains during hierarchical pooling")
+@click.option('--ksize', '-k', default=0.5, type=float, help="Percentage of nodes to retains during hierarchical pooling")
 @click.option('--config_file', '-c', required=True, type=click.Path(exists=True), help="File containing the model global configuration file")
 @click.option('--hparams', '-h', type=click.Path(exists=True), help="File containing the hpool params")
 @click.option('--output_path', '-o', default="", help="Output folder")
@@ -92,7 +92,7 @@ def sample(trainer, samples, output_file=None):
 @click.option('--max_n', default=-1, type=int, help="Maxinum number of datum to consider")
 @click.option('--cpu', is_flag=True, help="Force use cpu")
 @click.option('--samples', default=1000, type=int,  help="Number of molecules to samples")
-@click.option('--save_every', default=0.2, type=float,  help="Percentage of saves per epochs")
+@click.option('--save_every', default=0.5, type=float,  help="Percentage of saves per epochs")
 def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, epochs, batch_size, max_n, cpu, samples, save_every):
     torch.backends.cudnn.benchmark = True
     np.random.seed(42)
@@ -119,7 +119,7 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
     #print(pred_dict)
     output_path = os.path.join(output_path, arch)
     config["batch_size"] = batch_size  
-    trainer = train(dataset, config, epochs, output_path, max_n=max_n, cpu=cpu, save_every=save_every, max_nodes=max_nodes, min_nodes=min_nodes)
+    trainer = train(dataset, config, output_path, epochs, max_n=max_n, cpu=cpu, save_every=save_every, max_nodes=max_nodes, min_nodes=min_nodes)
     mol_generated = sample(trainer, samples, os.path.join(output_path, "mols.txt"))
     del mol_generated
     gc.collect()
