@@ -25,9 +25,9 @@ The default architecture is specified by the -c flag, while any additional param
 
 An example command to run lapool on the tox21 dataset would thus be:
 
-`python supervised.py -c default_config.yml  --dataset 'tox21' -o output  -k 0 -e 100`
+`python supervised.py -c default_config.yml  --dataset 'tox21' -o output  -k 0 -e 50`
 
-This will run lapool (default model) using the automatic centroid detection (k=0), default parameters, a maximum number of 100 epochs (early stopping is used in this sample code).
+This will run lapool (default model) using the automatic centroid detection (k=0), default parameters, a maximum number of 50 epochs (early stopping is additionally used in this sample code).
 
 You should expect a roc-auc of about 0.815 on the test set.
 
