@@ -47,4 +47,4 @@ You should expect a roc-auc of about 0.815 on the test set.
 
 Example of running with default qm9 dataset (0-9 atoms), on 10 epochs.
 
-`python generative.py -d qm9 -c expts/aae/1.yaml -o test  -e 10
+`python generative.py -d qm9 -c expts/aae/1.yaml -o test  -e 10`
