@@ -84,6 +84,7 @@ def _read_graphfile(dataname, datadir="data", max_nodes=None, min_nodes=None):
                 label_vals.append(val)
             graph_labels.append(val)
     # graph_labels = np.array(graph_labels)
+    label_vals = sorted(label_vals)
     label_map_to_int = {val: i for i, val in enumerate(label_vals)}
     graph_labels = np.array([label_map_to_int[l] for l in graph_labels])
     # if label_has_zero:
@@ -118,9 +119,9 @@ def _read_graphfile(dataname, datadir="data", max_nodes=None, min_nodes=None):
                 node_label_one_hot = [0] * num_unique_node_labels
                 node_label = node_labels[u - 1]
                 node_label_one_hot[node_label] = 1
-                G.node[u]['label'] = node_label_one_hot
+                G.nodes[u]['label'] = node_label_one_hot
             if len(node_attrs) > 0:
-                G.node[u]['feat'] = node_attrs[u - 1]
+                G.nodes[u]['feat'] = node_attrs[u - 1]
         if len(node_attrs) > 0:
             G.graph['feat_dim'] = node_attrs[0].shape[0]
 
@@ -149,9 +150,9 @@ def _load_dense_dataset(dataset, valid_size=0.1, test_size=0.1, min_size=0, max_
     labels = []
     for G in graphs:
         for u in G.nodes():
-            if G.node[u].get("feat") is None:
+            if G.nodes[u].get("feat") is None:
                 # fall back to node label if node attributes are not found
-                G.node[u]['feat'] = np.array(G.node[u]['label'])
+                G.nodes[u]['feat'] = np.array(G.nodes[u]['label'])
         labels.append(G.graph['label'])
     n_tasks = len(set(labels))
     labels = np.asarray(labels)

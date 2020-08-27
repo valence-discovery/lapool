@@ -304,6 +304,12 @@ def roc_auc_score(y_pred, y_true, per_tasks=False, average=None):
 
     """
     y_pred, y_true = _convert_to_numpy(y_pred, y_true)
+    if y_pred.shape != y_true.shape and len(y_true) == len(y_pred):
+        _y_true = np.zeros_like(y_pred)
+        _y_true[np.arange(len(y_true)), y_true] = 1
+        y_true = _y_true
+    y_true = np.asarray(y_true)
+
     if per_tasks:
         return skmetrics.roc_auc_score(y_true, y_pred, average=None)
 

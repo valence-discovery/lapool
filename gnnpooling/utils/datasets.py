@@ -102,7 +102,7 @@ class NetworkXGraphDataset(Dataset):
             self.A.append(a)
             feat_matrix = []
             for node in G.nodes():
-                feat_matrix.append(G.node[node]['feat'])
+                feat_matrix.append(G.nodes[node]['feat'])
             self.X.append(np.array(feat_matrix))
 
     def __len__(self):

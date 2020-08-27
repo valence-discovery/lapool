@@ -114,7 +114,8 @@ class Net(nn.Module):
 @click.option('--epochs', '-e', type=int, default=100, help="Number of epochs")
 @click.option('--batch_size', '-b', type=int, default=32, help="Batch size")
 @click.option('--cpu', is_flag=True, help="Force use cpu")
-def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, batch_size, cpu):
+@click.option('--no_early_stopping', is_flag=True, help="Don't use early stoppping")
+def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output_path, repeats, epochs, batch_size, cpu, no_early_stopping):
     torch.backends.cudnn.benchmark = True
     hpool_params = {}
     hpool_params_add = {}
@@ -139,7 +140,9 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
     config["hpool"].update(hpool_params)
     METRICS = {'acc': accuracy} # classification accuracy as metric
     arch = f"{arch}_{hidden_dim}"
-
+    early_stopping = {"patience": epochs//5, "min_delta": 1e-4}
+    if no_early_stopping:
+        early_stopping = None
     for repeat in range(repeats):
         np.random.seed(repeat)
         torch.manual_seed(repeat)
@@ -156,7 +159,7 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
         trainer = SupervisedTrainer(model, loss_fn=loss, metrics=METRICS,
                                     gpu=(not cpu), model_dir=model_dir, op__lr=1e-4, sigmoid=SIGMOID)
         trainer.fit(train_dt, valid_dt, batch_size=batch_size, epochs=epochs, generator_fn=generator, checkpoint='model_{}.pth.tar'.format(arch), tboardX="logs",
-                    checkpoint__restore_best=True, reduce_lr={"verbose": True, "factor": 0.5, "cooldown": 3}, early_stopping={"patience": 10, "min_delta": 1e-3})
+                    checkpoint__restore_best=True, reduce_lr={"verbose": True, "factor": 0.5, "cooldown": 3}, early_stopping=early_stopping)
         print(f"==> Evaluation step ({repeat+1}/{repeats})")
         loss, metric, pred = trainer.evaluate(
             test_dt, batch_size=len(test_dt)//10, return_pred=True, generator_fn=GraphDataLoader)
