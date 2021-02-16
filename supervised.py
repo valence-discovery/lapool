@@ -152,8 +152,7 @@ def cli(arch, dataset, max_nodes, min_nodes, ksize, config_file, hparams, output
         generator = partial(GraphDataLoader, drop_last=True)
         loss = get_loss(dataset)
         model = Net(max_nodes, in_size, out_size, config=config)
-        #print(in_size, out_size)
-        #print(model)
+        
         SIGMOID = (dataset.upper() in ['ALERTS', 'FRAGMENTS', 'TOX21'])
         print(f"==> Training step ({repeat+1}/{repeats})")
         trainer = SupervisedTrainer(model, loss_fn=loss, metrics=METRICS,
